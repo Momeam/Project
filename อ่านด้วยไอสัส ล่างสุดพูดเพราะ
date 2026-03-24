@@ -55,3 +55,13 @@ npm install express pg dotenv cors nodemon
 
 ถ้าแก้โค้ดแล้วอยากส่งงานขึ้น GitHub ให้ใช้คำสั่ง:
 git checkout -b ชื่อกิ่งของแก -> git add . -> git commit -m "ชื่อป้าย" -> git push origin ชื่อกิ่งของแก
+
+เผื่อใคร งง สำหรับคนอื่นที่ไม่ใช่มีมเริ่มที่
+1.cd frontend เเละต่อมาด้วย npm install zustand lucide-react clsx tailwind-merge
+2.cd ../backend (เพื่อย้อนมาเเบ็ค) เเละต่อมาด้วย npm install express pg dotenv cors nodemon
+3.เปิด Terminal ใหม่ใช้ cd backend เเละต่อด้วย npm run dev ให้ขึ้นคำว่า ✅ Tables "Properties" & "Users" are ready!
+4.เเนะนำให้เปิด Terminal ตัวที่ 3 คำสั่ง cd frontend เเละจบด้วย npm run dev ก้จะเปิดได้เเล้ว 
+
+เสริม วิธีเช็คเปิดพอร์ต 5000
+1.กด window + x ขึ้นมา หาคำว่า เทอร์มินัล เเละกดเข้าไป ใช้คำสั่ง netstat -ano | findstr :5000 ถ้าพบสิ่งเขียนว่า LISTENING ตามด้วยเลข(PIN) เช่น LISTENING 20784 เเปลว่า ไอ้เลข 20784 กำลังยึดอำนาจอยู่
+2.วิธีจัดการอำนาจ ใช้คำสั่ง taskkill /PID ..... /F (ใส่เลข PIN) หากผ่านจะเจอ SUCCESS: The process with PID ..... has been terminated.
