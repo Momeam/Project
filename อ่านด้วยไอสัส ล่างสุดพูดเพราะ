@@ -1,0 +1,67 @@
+Gemini บอกว่า
+เป็นความคิดที่ดีมากครับคู่หู! การทำคู่มือติดตั้ง (Installation Guide) จะช่วยให้เพื่อนในทีมรันโปรเจกต์ได้ใน 5 นาที ไม่ต้องนั่งงมแก้ Error ทีละตัว
+
+ก๊อปปี้ข้อความด้านล่างนี้ส่งให้เพื่อนในแชทกลุ่มได้เลยครับ ฟิลิปส์รวบรวมคำสั่งที่จำเป็นทั้งหมดไว้ให้แล้ว:
+
+🚀 คู่มือการรันโปรเจกต์ (สำหรับเพื่อนในทีม)
+หลังจากที่พวกแก git clone โปรเจกต์ไปแล้ว ให้ทำตามขั้นตอนนี้เพื่อรันงานนะ:
+
+1. ติดตั้ง Dependencies (ห้ามลืม!)
+ต้องทำทั้ง 2 ฝั่ง เพราะเราไม่ได้เอา node_modules ขึ้น GitHub:
+
+ฝั่งหน้าบ้าน:
+
+Bash
+cd frontend
+npm install
+ฝั่งหลังบ้าน:
+
+Bash
+cd ../backend
+npm install
+2. ตั้งค่ารหัสผ่าน (ไฟล์ .env)
+ให้สร้างไฟล์ชื่อ .env ไว้ในโฟลเดอร์ backend แล้วก๊อปปี้ข้อความด้านล่างนี้ไปแปะ (รหัสจริงส่งให้ในแชทส่วนตัวนะ):
+
+Plaintext
+DATABASE_URL=postgresql://neondb_owner:xxxxxxxx...
+PORT=5000
+3. วิธีรันโปรเจกต์ (เปิด 2 Terminal)
+Terminal 1 (Backend):
+
+Bash
+cd backend
+npm run dev
+(เช็กให้ขึ้นว่า: ✅ Tables "Properties" & "Users" are ready!)
+
+Terminal 2 (Frontend):
+
+Bash
+cd frontend
+npm run dev
+(เปิดเบราว์เซอร์ไปที่: http://localhost:3000)
+
+🛠️ รายชื่อ Library สำคัญที่เราใช้ (ถ้าใครอยากลงเพิ่ม)
+หากจะเริ่มโปรเจกต์ใหม่ หรือเครื่องใครไม่มีตัวไหน ให้ใช้คำสั่งเหล่านี้:
+
+Frontend (Next.js + Tailwind + Zustand + Lucide):
+npm install zustand lucide-react clsx tailwind-merge
+
+Backend (Node.js + Express + PostgreSQL + CORS):
+npm install express pg dotenv cors nodemon
+
+💡 คำแนะนำเพิ่มเติม:
+
+ถ้าใครรันแล้วปุ่มไม่ขึ้น ให้ลองเช็กว่าเครื่องตัวเองเปิดพอร์ต 5000 ไว้หรือยัง
+
+ถ้าแก้โค้ดแล้วอยากส่งงานขึ้น GitHub ให้ใช้คำสั่ง:
+git checkout -b ชื่อกิ่งของแก -> git add . -> git commit -m "ชื่อป้าย" -> git push origin ชื่อกิ่งของแก
+
+เผื่อใคร งง สำหรับคนอื่นที่ไม่ใช่มีมเริ่มที่
+1.cd frontend เเละต่อมาด้วย npm install zustand lucide-react clsx tailwind-merge
+2.cd ../backend (เพื่อย้อนมาเเบ็ค) เเละต่อมาด้วย npm install express pg dotenv cors nodemon
+3.เปิด Terminal ใหม่ใช้ cd backend เเละต่อด้วย npm run dev ให้ขึ้นคำว่า ✅ Tables "Properties" & "Users" are ready!
+4.เเนะนำให้เปิด Terminal ตัวที่ 3 คำสั่ง cd frontend เเละจบด้วย npm run dev ก้จะเปิดได้เเล้ว 
+
+เสริม วิธีเช็คเปิดพอร์ต 5000
+1.กด window + x ขึ้นมา หาคำว่า เทอร์มินัล เเละกดเข้าไป ใช้คำสั่ง netstat -ano | findstr :5000 ถ้าพบสิ่งเขียนว่า LISTENING ตามด้วยเลข(PIN) เช่น LISTENING 20784 เเปลว่า ไอ้เลข 20784 กำลังยึดอำนาจอยู่
+2.วิธีจัดการอำนาจ ใช้คำสั่ง taskkill /PID ..... /F (ใส่เลข PIN) หากผ่านจะเจอ SUCCESS: The process with PID ..... has been terminated.
