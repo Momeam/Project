@@ -122,6 +122,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // 🚀 3. API Routes
 
+
+
 // --- API สำหรับ Users (เพิ่มใหม่!) ---
 
 // [POST] สมัครสมาชิกใหม่
@@ -160,49 +162,89 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        
-        // 1. ค้นหาผู้ใช้จากอีเมลในฐานข้อมูล
+
+        // 1. ตรวจสอบว่าส่งข้อมูลมาครบไหม (ป้องกันแครช)
+        if (!email || !password) {
+            return res.status(400).json({ error: 'กรุณากรอกอีเมลและรหัสผ่าน' });
+        }
+
+        // 2. ค้นหาผู้ใช้
         const result = await pool.query('SELECT * FROM Users WHERE email = $1', [email]);
         const user = result.rows[0];
 
-        // 2. เช็กว่าเจอผู้ใช้ไหม และรหัสผ่านตรงกันหรือเปล่า
+        // 3. เช็กตัวตน
         if (!user || user.password !== password) {
-            // ถ้าไม่เจอ หรือรหัสผิด ให้เตือนกลับไป
             return res.status(401).json({ error: 'อีเมล หรือ รหัสผ่านไม่ถูกต้อง!' });
         }
 
-        // 3. ถ้าสำเร็จ ส่งข้อมูล User กลับไปให้หน้าบ้าน (แต่แอบลบรหัสผ่านทิ้งก่อนส่งเพื่อความปลอดภัย)
-        delete user.password;
-        res.status(200).json({ message: 'เข้าสู่ระบบสำเร็จ! 🎉', user });
+        // 4. ส่งกลับเฉพาะข้อมูลที่จำเป็น
+        const userData = {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role
+        };
+
+        res.status(200).json({ 
+            message: 'เข้าสู่ระบบสำเร็จ! 🎉', 
+            user: userData 
+        });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Login Error:', err); // Log ไว้ดูเองใน Console
+        res.status(500).json({ error: 'เกิดข้อผิดพลาดในการเชื่อมต่อระบบ' });
     }
 });
 
 // --- API สำหรับ Properties (เหมือนเดิมเป๊ะๆ) ---
 
-app.get('/api/properties', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM Properties ORDER BY createdAt DESC');
-        res.status(200).json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.post('/api/properties', async (req, res) => {
     try {
         const p = req.body;
-        const queryText = `INSERT INTO Properties (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE')`;
-        const values = [p.userId || '1', p.title, p.description, p.type, p.category, p.price, p.address, p.province, p.bedrooms, p.bathrooms, p.size];
-        await pool.query(queryText, values);
-        res.status(201).json({ message: 'บันทึกสำเร็จลง Neon! 🏠' });
+        // ⭐️ เพิ่มการตรวจสอบเบื้องต้น
+        if (!p.title || !p.price) {
+            return res.status(400).json({ error: 'กรุณากรอกหัวข้อและราคา' });
+        }
+
+        const queryText = `INSERT INTO Properties 
+            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, status) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE') 
+            RETURNING *`; // ⭐️ เพิ่ม RETURNING * เพื่อส่งข้อมูลที่เพิ่งสร้างกลับไปให้หน้าบ้าน
+        
+        const values = [
+            p.userId || '1', p.title, p.description || '', 
+            p.type || 'SALE', p.category || 'CONDO', p.price, 
+            p.address || '', p.province || '', p.bedrooms || 0, 
+            p.bathrooms || 0, p.size || 0
+        ];
+        
+        const result = await pool.query(queryText, values);
+        res.status(201).json({ message: 'บันทึกสำเร็จลง Neon! 🏠', property: result.rows[0] });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'ไม่สามารถบันทึกข้อมูลได้' });
+    }
+});
+
+// [GET] ดึงข้อมูลประกาศ "รายตัว" ตาม ID
+app.get('/api/properties/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // ค้นหาใน Database ว่ามี ID นี้ไหม
+        const result = await pool.query('SELECT * FROM Properties WHERE id = $1', [id]);
+        
+        if (result.rows.length === 0) {
+            // 🔴 ถ้าไม่เจอ ส่ง 404 กลับไป
+            return res.status(404).json({ error: 'ไม่พบข้อมูลประกาศนี้' });
+        }
+        
+        // 🟢 ถ้าเจอ ส่งข้อมูลบ้านหลังนั้นกลับไป
+        res.status(200).json(result.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-
 app.put('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;
