@@ -22,6 +22,7 @@ interface AuthState {
     // Actions ที่หน้าบ้านไว้เรียกใช้ตอนล็อกอินผ่าน/ล็อกเอาท์
     loginSuccess: (user: User) => void; 
     logout: () => void;
+    
 }
 
 export const useAuthStore = create<AuthState>()(
