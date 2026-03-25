@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const { Pool } = require('pg'); 
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
@@ -9,8 +10,53 @@ app.use(express.json());
 
 // ⚙️ 1. ตั้งค่าการเชื่อมต่อ Neon PostgreSQL
 const pool = new Pool({
-    connectionString: 'postgresql://neondb_owner:npg_4GSN5vqtrhzp@ep-nameless-dream-a1b3fs72-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
+    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_4GSN5vqtrhzp@ep-nameless-dream-a1b3fs72-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
 });
+
+// 📱 เก็บ OTP ชั่วคราวใน Memory (ในระบบจริงควรใช้ Redis หรือ Database)
+const otps = {};
+
+// 🚀 ฟังก์ชันส่ง SMS จริง
+async function sendRealSMS(tel, otp) {
+    try {
+        console.log(`[SMS Gateway] กำลังส่งรหัส ${otp} ไปยังเบอร์ ${tel}...`);
+        
+        // 1. ช่องทาง Twilio (สากล)
+        if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN) {
+            const twilio = require('twilio');
+            const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+            
+            await client.messages.create({
+                body: `HomeLink OTP: ${otp} (รหัสยืนยันตัวตนผู้ขายของคุณ)`,
+                to: `+66${tel.substring(1)}`, 
+                from: process.env.TWILIO_PHONE_NUMBER
+            });
+            console.log('✅ SMS Sent via Twilio');
+            return true;
+        }
+
+        // 2. ช่องทาง SMS2PRO (ผู้ให้บริการในไทย - แนะนำสำหรับเบอร์ไทย)
+        // ถ้าคุณมี API Key ของ SMS2PRO ให้ใส่ใน .env
+        if (process.env.SMS2PRO_API_KEY) {
+            const axios = require('axios');
+            await axios.post('https://api.sms2pro.com/v1/sms', {
+                recipient: tel,
+                message: `HomeLink OTP: ${otp}`,
+                sender: 'HomeLink'
+            }, {
+                headers: { 'Authorization': `Bearer ${process.env.SMS2PRO_API_KEY}` }
+            });
+            console.log('✅ SMS Sent via SMS2PRO');
+            return true;
+        }
+
+        console.log('⚠️ [Mock Mode] ยังไม่ได้ตั้งค่า API Key ใน .env ระบบจะจำลองการส่งเท่านั้น');
+        return true;
+    } catch (error) {
+        console.error('❌ SMS Sending Failed:', error.message);
+        return false;
+    }
+}
 
 // ฟังก์ชันเชื่อมต่อและสร้างตารางอัตโนมัติ
 async function connectPostgres() {
@@ -36,10 +82,21 @@ async function connectPostgres() {
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 tel VARCHAR(20),
+                full_name VARCHAR(255),
+                id_card_number VARCHAR(13),
+                line_id VARCHAR(100),
                 role VARCHAR(20) DEFAULT 'USER',
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        
+        // 🛠️ เพิ่มคอลัมน์ที่ขาดหายไป (Migration)
+        await pool.query(`
+            ALTER TABLE Users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);
+            ALTER TABLE Users ADD COLUMN IF NOT EXISTS id_card_number VARCHAR(13);
+            ALTER TABLE Users ADD COLUMN IF NOT EXISTS line_id VARCHAR(100);
+        `);
+        
         console.log('✅ Tables "Properties" & "Users" are ready!');
     } catch (err) {
         console.error('❌ Neon Database Connection Failed:', err);
@@ -238,8 +295,8 @@ app.put('/api/users/:id/role', async (req, res) => {
         const { id } = req.params;
         const { role } = req.body;
 
-        if (!['USER', 'ADMIN'].includes(role)) {
-            return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง (ต้องเป็น USER หรือ ADMIN)' });
+        if (!['USER', 'SELLER', 'ADMIN'].includes(role)) {
+            return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง (ต้องเป็น USER, SELLER หรือ ADMIN)' });
         }
 
         const queryText = 'UPDATE Users SET role = $1 WHERE id = $2 RETURNING id, username, email, role';
@@ -251,6 +308,110 @@ app.put('/api/users/:id/role', async (req, res) => {
 
         res.status(200).json({ message: 'อัปเดตบทบาทสำเร็จ! ✅', user: result.rows[0] });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [DELETE] ลบผู้ใช้งาน (Admin Only)
+app.delete('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // ตรวจสอบบทบาทของผู้ใช้ที่จะถูกลบก่อน
+        const userResult = await pool.query('SELECT role FROM Users WHERE id = $1', [id]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: 'ไม่พบผู้ใช้งานนี้' });
+        }
+
+        if (userResult.rows[0].role === 'ADMIN') {
+            return res.status(403).json({ error: 'ไม่สามารถลบผู้ใช้งานที่มีสิทธิ์เป็น ADMIN ได้' });
+        }
+
+        const result = await pool.query('DELETE FROM Users WHERE id = $1 RETURNING id, username', [id]);
+        res.status(200).json({ message: `ลบผู้ใช้ ${result.rows[0].username} สำเร็จ! 🗑️` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [POST] ขอรหัส OTP สำหรับยืนยันตัวตน Seller ผ่านเบอร์โทรศัพท์
+app.post('/api/users/request-otp', async (req, res) => {
+    try {
+        const { tel } = req.body;
+        if (!tel) return res.status(400).json({ error: 'กรุณาระบุเบอร์โทรศัพท์' });
+
+        // สร้าง OTP 6 หลัก
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        otps[tel] = {
+            code: otp,
+            expires: Date.now() + 5 * 60 * 1000 // หมดอายุใน 5 นาที
+        };
+
+        // 🚀 ส่ง SMS จริง
+        const sent = await sendRealSMS(tel, otp);
+        
+        if (!sent) {
+            return res.status(500).json({ error: 'ไม่สามารถส่ง SMS ได้ในขณะนี้' });
+        }
+        
+        res.status(200).json({ 
+            message: 'ส่งรหัส OTP ไปยังเบอร์มือถือของคุณแล้ว', 
+            otp: otp // สำหรับการทดสอบ (ในระบบจริงห้ามทำ!)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [POST] ยืนยัน OTP และอัปเกรดเป็น SELLER (พร้อมบันทึกข้อมูลส่วนตัว)
+app.post('/api/users/verify-otp', async (req, res) => {
+    try {
+        const { tel, otp, fullName, idCardNumber, email, lineId } = req.body;
+        
+        console.log(`[Verify OTP] รับข้อมูล: tel=${tel}, otp=${otp}, email=${email}`);
+        
+        const savedOtp = otps[tel];
+
+        if (!savedOtp) {
+            console.log(`❌ ไม่พบรหัส OTP สำหรับเบอร์ ${tel} (อาจเกิดจาก Server Restart)`);
+            return res.status(400).json({ error: 'ไม่พบรหัส OTP หรือรหัสหมดอายุ (กรุณากดขอรหัสใหม่อีกครั้ง)' });
+        }
+
+        if (savedOtp.code !== otp) {
+            console.log(`❌ รหัส OTP ไม่ถูกต้อง: กรอก=${otp}, จริง=${savedOtp.code}`);
+            return res.status(400).json({ error: 'รหัส OTP ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง' });
+        }
+
+        if (Date.now() > savedOtp.expires) {
+            console.log(`❌ รหัส OTP หมดอายุ`);
+            return res.status(400).json({ error: 'รหัส OTP หมดอายุแล้ว กรุณากดขอรหัสใหม่' });
+        }
+
+        // ลบ OTP ทิ้งหลังใช้แล้ว
+        delete otps[tel];
+
+        // อัปเกรดบทบาทเป็น SELLER และบันทึกข้อมูลส่วนตัว
+        const queryText = `
+            UPDATE Users 
+            SET role = 'SELLER', 
+                full_name = $1, 
+                id_card_number = $2, 
+                tel = $3, 
+                line_id = $4 
+            WHERE email = $5 
+            RETURNING id, username, email, role, full_name, id_card_number, tel, line_id
+        `;
+        const values = [fullName, idCardNumber, tel, lineId, email];
+        const result = await pool.query(queryText, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'ไม่พบผู้ใช้งานที่ล็อกอินอยู่ (Email ไม่ตรง)' });
+        }
+
+        console.log(`✅ อัปเกรดผู้ใช้ ${result.rows[0].username} เป็น SELLER สำเร็จ!`);
+        res.status(200).json({ message: 'ยืนยันตัวตนสำเร็จ! คุณเป็นผู้ขายแล้ว 🎉', user: result.rows[0] });
+    } catch (err) {
+        console.error('❌ Verify Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

@@ -15,13 +15,18 @@ export default function SellerProfilePage() {
     const sellerId = params.id as string;
 
     // 1. ดึงข้อมูลผู้ขาย
-    const users = useAuthStore((state) => state.users);
-    const seller = useMemo(() => users.find(u => u.id === sellerId), [users, sellerId]);
+    const { usersList: users, fetchUsers } = useAuthStore();
+    
+    React.useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    const seller = useMemo(() => users.find(u => String(u.id) === String(sellerId)), [users, sellerId]);
 
     // 2. ดึงประกาศของผู้ขายคนนี้
     const allListings = usePropertyStore((state) => state.properties);
     const sellerListings = useMemo(() => {
-        return allListings.filter(p => p.userId === sellerId && p.status === 'ACTIVE');
+        return allListings.filter(p => String(p.userId) === String(sellerId) && p.status === 'ACTIVE');
     }, [allListings, sellerId]);
 
     if (!seller) {
@@ -50,7 +55,7 @@ export default function SellerProfilePage() {
                                 <div className="absolute -top-16 left-1/2 -translate-x-1/2">
                                     <div className="w-32 h-32 rounded-full border-4 border-white bg-slate-100 overflow-hidden shadow-md">
                                         <img 
-                                            src={seller.verificationDetails?.documentUrl || `https://ui-avatars.com/api/?name=${seller.username}`} 
+                                            src={`https://ui-avatars.com/api/?name=${seller.username}&background=random`} 
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
@@ -58,7 +63,7 @@ export default function SellerProfilePage() {
 
                                 <div className="mt-8 mb-6">
                                     <h1 className="text-2xl font-bold text-slate-900 flex items-center justify-center gap-2">
-                                        {seller.verificationDetails?.fullName || seller.username}
+                                        {seller.full_name || seller.username}
                                         <BadgeCheck className="w-6 h-6 text-emerald-500" />
                                     </h1>
                                     <p className="text-slate-500">สมาชิก: {seller.id}</p>
@@ -71,11 +76,11 @@ export default function SellerProfilePage() {
                                     <h3 className="font-semibold text-slate-900">ข้อมูลติดต่อ</h3>
                                     <div className="flex items-center text-slate-600 gap-3">
                                         <div className="p-2 bg-slate-100 rounded-lg"><Phone className="w-4 h-4"/></div>
-                                        <span>{seller.verificationDetails?.phoneNumber || '-'}</span>
+                                        <span>{seller.tel || '-'}</span>
                                     </div>
                                     <div className="flex items-center text-slate-600 gap-3">
                                         <div className="p-2 bg-slate-100 rounded-lg"><MessageSquare className="w-4 h-4"/></div>
-                                        <span>Line: {seller.verificationDetails?.lineId || '-'}</span>
+                                        <span>Line: {seller.line_id || '-'}</span>
                                     </div>
                                     <div className="flex items-center text-slate-600 gap-3">
                                         <div className="p-2 bg-slate-100 rounded-lg"><Mail className="w-4 h-4"/></div>

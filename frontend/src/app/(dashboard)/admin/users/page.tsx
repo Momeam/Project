@@ -13,7 +13,8 @@ import {
     Calendar,
     Search,
     Loader2,
-    MoreVertical
+    MoreVertical,
+    Trash2
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminUsersPage() {
-    const { usersList, fetchUsers, updateUserRole, currentUser } = useAuthStore();
+    const { usersList, fetchUsers, updateUserRole, deleteUser, currentUser } = useAuthStore();
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -43,6 +44,12 @@ export default function AdminUsersPage() {
     const handleRoleChange = async (userId: string | number, newRole: UserRole) => {
         if (confirm(`คุณต้องการเปลี่ยนบทบาทเป็น ${newRole} ใช่หรือไม่?`)) {
             await updateUserRole(userId, newRole);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string | number, username: string) => {
+        if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ "${username}"? การกระทำนี้ไม่สามารถย้อนกลับได้`)) {
+            await deleteUser(userId);
         }
     };
 
@@ -121,6 +128,13 @@ export default function AdminUsersPage() {
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'ADMIN')} className="text-purple-600 font-medium">
                                                     <Shield className="w-4 h-4 mr-2" /> ตั้งเป็น ADMIN
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                    onClick={() => handleDeleteUser(user.id, user.username)} 
+                                                    className="text-rose-600 font-medium"
+                                                    disabled={user.role === 'ADMIN'}
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" /> ลบผู้ใช้งาน
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

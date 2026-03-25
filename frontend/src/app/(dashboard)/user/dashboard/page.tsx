@@ -1,40 +1,105 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationForm from '@/components/VerificationForm'; 
 import AddListingForm from '@/components/AddListingForm';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePropertyStore } from '@/stores/usePropertyStore'; 
 import Link from 'next/link';
-import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft } from 'lucide-react'; 
+import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft, PartyPopper, RefreshCcw } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function UserDashboardPage() {
+    const [isMounted, setIsMounted] = useState(false);
     
-    const verificationStatus = useAuthStore((state) => state.verificationStatus);
-    const userId = useAuthStore((state) => state.userId);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const userId = currentUser?.id;
+    const role = currentUser?.role;
+    const justUpgraded = useAuthStore((state) => state.justUpgraded); // 👈 ดึงค่ามาเช็ก
+    const setJustUpgraded = useAuthStore((state) => state.setJustUpgraded); // 👈 ดึง action มาเคลียร์ค่า
+    const verificationStatus = currentUser?.verificationStatus || 'IDLE';
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const allListings = usePropertyStore((state) => state.properties);
     const deleteProperty = usePropertyStore((state) => state.deleteProperty);
 
     const myListings = useMemo(() => {
         if (!userId) return [];
-        return allListings.filter(p => p.userId === userId);
+        return allListings.filter(p => String(p.userId) === String(userId));
     }, [allListings, userId]);
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD'>('LIST');
 
     const handleDelete = (id: string) => {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?")) {
-            deleteProperty(id, userId || '', 'SELLER');
+            deleteProperty(id, userId ? String(userId) : '', 'SELLER');
         }
     };
+
+    if (!isMounted) return null;
+
+    // -------------------------------------------------------
+    // 0. ส่วนแสดงผล ป๊อปอัปเซอร์ไพรส์ (เมื่อเพิ่งอัปเกรดเสร็จ)
+    // -------------------------------------------------------
+    if (justUpgraded) {
+        return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(20)].map((_, i) => (
+                        <div key={i} className="absolute w-3 h-3 rounded-sm animate-ping"
+                            style={{
+                                top: `${Math.random() * 100}%`,
+                                left: `${Math.random() * 100}%`,
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5],
+                                animationDelay: `${Math.random() * 2}s`,
+                                animationDuration: `${1 + Math.random() * 2}s`
+                            }}
+                        />
+                    ))}
+                </div>
+
+                <Card className="max-w-md w-full shadow-[0_0_50px_rgba(59,130,246,0.3)] border-none text-center overflow-hidden animate-in fade-in zoom-in slide-in-from-bottom-10 duration-500 relative z-10 bg-white/95">
+                    <div className="h-3 bg-gradient-to-r from-blue-500 via-emerald-500 to-blue-500 w-full animate-pulse" />
+                    <CardContent className="p-10">
+                        <div className="relative mb-8">
+                            <div className="bg-emerald-100 w-28 h-28 rounded-full flex items-center justify-center mx-auto relative z-10 shadow-inner">
+                                <PartyPopper className="w-14 h-14 text-emerald-600 animate-bounce" />
+                            </div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-emerald-200/40 rounded-full animate-ping" />
+                        </div>
+
+                        <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">เซอร์ไพรส์! 🎉</h2>
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-2xl mb-8 shadow-lg transform -rotate-1">
+                            <p className="text-white font-black text-2xl drop-shadow-md">
+                                ยินดีด้วยคุณได้เป็นคนขายแล้ว!
+                            </p>
+                        </div>
+                        
+                        <p className="text-slate-500 mb-10 text-base leading-relaxed font-medium">
+                            เราได้เปิดระบบการลงประกาศขายให้คุณแล้ว <br/>
+                            เริ่มสร้างรายได้จากอสังหาริมทรัพย์ของคุณได้ทันที!
+                        </p>
+
+                        <Button 
+                            onClick={() => setJustUpgraded(false)} // 👈 กดแล้วเคลียร์ค่าเพื่อเข้าหน้า Dashboard จริง
+                            className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
+                        >
+                            เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     // -------------------------------------------------------
     // 1. ส่วนแสดงผลสำหรับ SELLER (อนุมัติแล้ว)
     // -------------------------------------------------------
-    if (verificationStatus === 'APPROVED') {
+    if (role === 'SELLER') {
         return (
             <div className="container mx-auto p-4 md:py-8 max-w-5xl">
                 

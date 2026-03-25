@@ -40,7 +40,8 @@ export default function AddListingForm() {
     const addProperty = usePropertyStore((state) => state.addProperty);
     const fetchProperties = usePropertyStore((state) => state.fetchProperties); // 👈 เพิ่มฟังก์ชันดูดข้อมูลใหม่
     
-    const userId = useAuthStore((state) => state.userId);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const userId = currentUser?.id;
 
     const [formData, setFormData] = useState<FormDataState>({
         title: '', price: 0, type: 'SALE', category: 'CONDO', 

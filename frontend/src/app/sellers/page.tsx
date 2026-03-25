@@ -10,9 +10,13 @@ import { Search, User, BadgeCheck } from 'lucide-react';
 
 export default function SellersPage() {
     const [searchQuery, setSearchQuery] = useState('');
-    const users = useAuthStore((state) => state.users);
+    const { usersList: users, fetchUsers } = useAuthStore();
 
-    // ⭐️ กรองเฉพาะคนที่เป็น SELLER และสถานะ APPROVED
+    React.useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    // ⭐️ กรองเฉพาะคนที่เป็น SELLER
     const approvedSellers = useMemo(() => {
         // 1. ป้องกันแอปพังกรณี users ยังโหลดไม่เสร็จ หรือไม่มีค่า
         if (!users || !Array.isArray(users)) return [];
@@ -20,13 +24,12 @@ export default function SellersPage() {
         // 2. ใส่ type 'any' ให้ p เพื่อไม่ให้ TypeScript แจ้งเตือนเส้นใต้สีแดง
         return users.filter((p: any) => {
             const isSeller = p?.role === 'SELLER';
-            const isApproved = p?.verificationStatus === 'APPROVED';
             
             const query = searchQuery.toLowerCase();
             
             // 3. ดักค่าว่างไว้ก่อน เพื่อป้องกัน error ตอนเรียกใช้ .toLowerCase()
             const safeUsername = p?.username || '';
-            const safeFullName = p?.verificationDetails?.fullName || '';
+            const safeFullName = p?.full_name || ''; // ใช้ full_name จาก backend
             const safeEmail = p?.email || '';
 
             const matchesSearch = 
@@ -34,7 +37,7 @@ export default function SellersPage() {
                 safeFullName.toLowerCase().includes(query) ||
                 safeEmail.toLowerCase().includes(query);
 
-            return isSeller && isApproved && matchesSearch;
+            return isSeller && matchesSearch;
         });
     }, [users, searchQuery]);
 
