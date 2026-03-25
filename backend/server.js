@@ -97,7 +97,20 @@ async function connectPostgres() {
             ALTER TABLE Users ADD COLUMN IF NOT EXISTS line_id VARCHAR(100);
         `);
         
-        console.log('✅ Tables "Properties" & "Users" are ready!');
+        // 🗄️ สร้างตาราง Announcements (ประกาศสิทธิพิเศษ)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS Announcements (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                type VARCHAR(50) DEFAULT 'PROMOTION', -- 'PROMOTION', 'INFO', 'URGENT'
+                is_active BOOLEAN DEFAULT TRUE,
+                admin_id INT,
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        
+        console.log('✅ Tables "Properties", "Users" & "Announcements" are ready!');
     } catch (err) {
         console.error('❌ Neon Database Connection Failed:', err);
     }
@@ -502,6 +515,84 @@ app.delete('/api/properties/:id', async (req, res) => {
             return res.status(404).json({ error: 'ไม่พบข้อมูลประกาศนี้' });
         }
         res.status(200).json({ message: `ลบ ID: ${id} สำเร็จ! 🗑️` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==============================
+// 📢 API สำหรับ Announcements (สิทธิพิเศษ/ประกาศ)
+// ==============================
+
+// [GET] ดึงประกาศทั้งหมด (ที่กำลังใช้งาน)
+app.get('/api/announcements', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT a.*, u.username as admin_name 
+            FROM Announcements a
+            LEFT JOIN Users u ON a.admin_id = u.id
+            WHERE a.is_active = TRUE
+            ORDER BY a.createdAt DESC
+        `);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [POST] สร้างประกาศใหม่ (Admin Only)
+app.post('/api/announcements', async (req, res) => {
+    try {
+        const { title, content, type, admin_id } = req.body;
+        
+        if (!title || !content) {
+            return res.status(400).json({ error: 'กรุณากรอกหัวข้อและเนื้อหาประกาศ' });
+        }
+
+        const queryText = `
+            INSERT INTO Announcements (title, content, type, admin_id) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING *
+        `;
+        const values = [title, content, type || 'PROMOTION', admin_id];
+        const result = await pool.query(queryText, values);
+        
+        res.status(201).json({ message: 'สร้างประกาศสำเร็จ! 📢', announcement: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [DELETE] ลบประกาศ (Admin Only)
+app.delete('/api/announcements/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('DELETE FROM Announcements WHERE id = $1 RETURNING id', [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'ไม่พบประกาศนี้' });
+        }
+        res.status(200).json({ message: `ลบประกาศสำเร็จ! 🗑️` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// [PUT] ปิด/เปิด การใช้งานประกาศ
+app.put('/api/announcements/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_active } = req.body;
+        
+        const result = await pool.query(
+            'UPDATE Announcements SET is_active = $1 WHERE id = $2 RETURNING *',
+            [is_active, id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'ไม่พบประกาศนี้' });
+        }
+        res.status(200).json({ message: 'อัปเดตสถานะประกาศสำเร็จ! ✅', announcement: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

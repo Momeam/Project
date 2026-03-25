@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Building2, LayoutDashboard } from 'lucide-react';
+import NotificationCenter from '@/components/NotificationCenter'; // 👈 นำเข้า NotificationCenter
 
 export default function Navbar() {
     const [isMounted, setIsMounted] = useState(false); // ⭐️ 1. เพิ่ม State เช็กการโหลด
@@ -68,6 +69,7 @@ export default function Navbar() {
                     {isMounted && (
                         isLoggedIn ? (
                             <>
+                                <NotificationCenter /> {/* 🔔 แสดงกระดิ่งแจ้งเตือนที่นี่ */}
                                 <Link href={getMenuLink()}>
                                     <Button variant="ghost" className="text-slate-600 hover:text-slate-900 hover:bg-slate-50 gap-2 font-medium">
                                         {role === 'SELLER' ? <LayoutDashboard className="w-4 h-4" /> : <User className="w-4 h-4" />}

@@ -14,8 +14,10 @@ import {
     Search,
     Loader2,
     MoreVertical,
-    Trash2
+    Trash2,
+    Megaphone, // 👈 เพิ่มไอคอน
 } from 'lucide-react';
+import Link from 'next/link'; // 👈 นำเข้า Link
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -64,23 +66,34 @@ export default function AdminUsersPage() {
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                        <Users className="w-8 h-8 text-blue-600" />
-                        จัดการผู้ใช้งาน
-                    </h1>
-                    <p className="text-slate-500">จัดการบทบาทและข้อมูลผู้ใช้งานทั้งหมดในระบบ</p>
+                <div className="flex items-center w-full">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                            <Users className="w-8 h-8 text-blue-600" />
+                            จัดการผู้ใช้งาน
+                        </h1>
+                        <p className="text-slate-500">จัดการบทบาทและข้อมูลผู้ใช้งานทั้งหมดในระบบ</p>
+                    </div>
                 </div>
 
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                    <input 
-                        type="text" 
-                        placeholder="ค้นหาชื่อ หรือ อีเมล..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                    />
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Link href="/admin/announcements">
+                        <Button variant="outline" className="w-full sm:w-auto border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 font-semibold gap-2">
+                            <Megaphone className="w-5 h-5" />
+                            จัดการประกาศ / สิทธิพิเศษ
+                        </Button>
+                    </Link>
+
+                    <div className="relative w-full md:w-96">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                        <input 
+                            type="text" 
+                            placeholder="ค้นหาชื่อ หรือ อีเมล..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        />
+                    </div>
                 </div>
             </div>
 

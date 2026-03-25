@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationForm from '@/components/VerificationForm'; 
 import AddListingForm from '@/components/AddListingForm';
+import AnnouncementBanner from '@/components/AnnouncementBanner'; // 👈 นำเข้า Banner ประกาศ
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePropertyStore } from '@/stores/usePropertyStore'; 
 import Link from 'next/link';
@@ -103,13 +104,16 @@ export default function UserDashboardPage() {
         return (
             <div className="container mx-auto p-4 md:py-8 max-w-5xl">
                 
-                {/* 🗑️ ลบแถบเมนูนำทางด้านบนออกไปแล้ว */}
+                {/* 📢 แสดงประกาศและสิทธิพิเศษจากแอดมิน */}
+                <AnnouncementBanner />
 
                 {/* Header Dashboard */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        Seller Dashboard
-                    </h1>
+                    <div className="flex items-center gap-4 w-full">
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                            Seller Dashboard
+                        </h1>
+                    </div>
                     <div className="flex space-x-2">
                         <Button 
                             variant={activeTab === 'LIST' ? 'default' : 'outline'}
@@ -200,7 +204,8 @@ export default function UserDashboardPage() {
     return (
         <div className="container mx-auto p-4 md:py-8 max-w-4xl">
             
-            {/* 🗑️ ลบแถบเมนูนำทางด้านบนออกไปแล้ว */}
+            {/* 📢 แสดงประกาศและสิทธิพิเศษจากแอดมิน */}
+            <AnnouncementBanner />
             
             <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
                 สมัครเป็นผู้ขาย
