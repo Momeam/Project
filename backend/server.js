@@ -245,6 +245,7 @@ app.get('/api/properties/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// [PUT] แก้ไขข้อมูลประกาศตาม ID
 app.put('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -257,7 +258,7 @@ app.put('/api/properties/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+// [DELETE] ลบประกาศตาม ID
 app.delete('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;

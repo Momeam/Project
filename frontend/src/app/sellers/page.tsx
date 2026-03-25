@@ -4,9 +4,9 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, User, MapPin, Phone, BadgeCheck } from 'lucide-react';
+import { Search, User, BadgeCheck } from 'lucide-react';
+// หมายเหตุ: เอา import ที่ไม่ได้ใช้ออกไปแล้วครับ (Input, MapPin, Phone)
 
 export default function SellersPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -14,15 +14,25 @@ export default function SellersPage() {
 
     // ⭐️ กรองเฉพาะคนที่เป็น SELLER และสถานะ APPROVED
     const approvedSellers = useMemo(() => {
-        return users.filter(u => {
-            const isSeller = u.role === 'SELLER';
-            const isApproved = u.verificationStatus === 'APPROVED';
+        // 1. ป้องกันแอปพังกรณี users ยังโหลดไม่เสร็จ หรือไม่มีค่า
+        if (!users || !Array.isArray(users)) return [];
+
+        // 2. ใส่ type 'any' ให้ p เพื่อไม่ให้ TypeScript แจ้งเตือนเส้นใต้สีแดง
+        return users.filter((p: any) => {
+            const isSeller = p?.role === 'SELLER';
+            const isApproved = p?.verificationStatus === 'APPROVED';
             
             const query = searchQuery.toLowerCase();
+            
+            // 3. ดักค่าว่างไว้ก่อน เพื่อป้องกัน error ตอนเรียกใช้ .toLowerCase()
+            const safeUsername = p?.username || '';
+            const safeFullName = p?.verificationDetails?.fullName || '';
+            const safeEmail = p?.email || '';
+
             const matchesSearch = 
-                u.username.toLowerCase().includes(query) ||
-                u.verificationDetails?.fullName?.toLowerCase().includes(query) ||
-                u.email.toLowerCase().includes(query);
+                safeUsername.toLowerCase().includes(query) ||
+                safeFullName.toLowerCase().includes(query) ||
+                safeEmail.toLowerCase().includes(query);
 
             return isSeller && isApproved && matchesSearch;
         });
@@ -56,13 +66,13 @@ export default function SellersPage() {
             <div className="container mx-auto px-4 py-12 max-w-7xl">
                 {approvedSellers.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {approvedSellers.map((seller) => (
+                        {approvedSellers.map((seller: any) => (
                             <Link href={`/sellers/${seller.id}`} key={seller.id} className="group">
                                 <Card className="overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 h-full hover:-translate-y-1">
                                     <CardContent className="p-6 flex items-center gap-4">
                                         <div className="w-20 h-20 bg-gray-100 rounded-full overflow-hidden border-2 border-emerald-100 flex-shrink-0">
                                             <img 
-                                                src={seller.verificationDetails?.documentUrl || `https://ui-avatars.com/api/?name=${seller.username}&background=random`} 
+                                                src={seller?.verificationDetails?.documentUrl || `https://ui-avatars.com/api/?name=${seller.username}&background=random`} 
                                                 alt={seller.username} 
                                                 className="w-full h-full object-cover"
                                             />
@@ -70,7 +80,7 @@ export default function SellersPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1 mb-1">
                                                 <h3 className="font-bold text-lg text-slate-900 truncate group-hover:text-emerald-600 transition-colors">
-                                                    {seller.verificationDetails?.fullName || seller.username}
+                                                    {seller?.verificationDetails?.fullName || seller.username}
                                                 </h3>
                                                 <BadgeCheck className="w-4 h-4 text-emerald-500" />
                                             </div>

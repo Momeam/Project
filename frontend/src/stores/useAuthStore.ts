@@ -22,6 +22,7 @@ interface AuthState {
     // Actions ที่หน้าบ้านไว้เรียกใช้ตอนล็อกอินผ่าน/ล็อกเอาท์
     loginSuccess: (user: User) => void; 
     logout: () => void;
+    users: any[]; // เพิ่ม state สำหรับเก็บรายชื่อผู้ใช้ทั้งหมด (รวมถึงผู้ขาย)
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
             // --- State พื้นฐาน ---
             isLoggedIn: false,
             currentUser: null,
+            users: [], // เพิ่ม state สำหรับเก็บรายชื่อผู้ใช้ทั้งหมด (รวมถึงผู้ขาย)
 
             // --- Actions ---
             // ⭐️ เมื่อ Backend บอกว่าล็อกอินผ่าน ก็ส่งข้อมูล User มาเก็บไว้ที่นี่
