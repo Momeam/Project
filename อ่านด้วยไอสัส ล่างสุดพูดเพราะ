@@ -49,7 +49,7 @@ npm install zustand lucide-react clsx tailwind-merge
 Backend (Node.js + Express + PostgreSQL + CORS):
 npm install express pg dotenv cors nodemon
 
-💡 คำแนะนำเพิ่มเติม:
+💡 คำแนะนำเพิ่มเติม:ป
 
 ถ้าใครรันแล้วปุ่มไม่ขึ้น ให้ลองเช็กว่าเครื่องตัวเองเปิดพอร์ต 5000 ไว้หรือยัง
 
