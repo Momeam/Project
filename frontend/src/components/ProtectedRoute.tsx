@@ -15,14 +15,15 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   
   // ดึงข้อมูลผู้ใช้จาก Store
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const userRole = useAuthStore((state) => state.role);
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const userRole = currentUser?.role;
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !userRole) return;
 
     // 1. ถ้ายังไม่ล็อกอิน -> ดีดไปหน้า Login
     if (!isLoggedIn) {
@@ -44,7 +45,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   }, [isLoggedIn, userRole, allowedRoles, router, isMounted]);
 
   // ถ้ายังโหลดไม่เสร็จ หรือ สิทธิ์ไม่ผ่าน ไม่ต้องแสดงเนื้อหา
-  if (!isMounted || !isLoggedIn || !allowedRoles.includes(userRole)) {
+  if (!isMounted || !isLoggedIn || !userRole || !allowedRoles.includes(userRole)) {
     return null; // หรือใส่ Loading Spinner
   }
 

@@ -232,6 +232,29 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+// [PUT] อัปเดตบทบาทผู้ใช้ (Update User Role)
+app.put('/api/users/:id/role', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+
+        if (!['USER', 'ADMIN'].includes(role)) {
+            return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง (ต้องเป็น USER หรือ ADMIN)' });
+        }
+
+        const queryText = 'UPDATE Users SET role = $1 WHERE id = $2 RETURNING id, username, email, role';
+        const result = await pool.query(queryText, [role, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'ไม่พบผู้ใช้งานนี้' });
+        }
+
+        res.status(200).json({ message: 'อัปเดตบทบาทสำเร็จ! ✅', user: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // ==============================
 // 🏠 API สำหรับ Properties

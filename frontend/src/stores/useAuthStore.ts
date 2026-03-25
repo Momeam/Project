@@ -18,22 +18,29 @@ export interface User {
 interface AuthState {
     isLoggedIn: boolean;
     currentUser: User | null;
+    usersList: User[];
     
     // Actions ที่หน้าบ้านไว้เรียกใช้ตอนล็อกอินผ่าน/ล็อกเอาท์
     loginSuccess: (user: User) => void; 
     logout: () => void;
+    updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
+    
+    // Actions สำหรับจัดการผู้ใช้ (สำหรับ Admin)
+    fetchUsers: () => Promise<void>;
+    updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
+    approveUserVerification: (userId: string | number) => Promise<void>;
+    rejectUserVerification: (userId: string | number) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             // --- State พื้นฐาน ---
             isLoggedIn: false,
             currentUser: null,
-            users: [], // เพิ่ม state สำหรับเก็บรายชื่อผู้ใช้ทั้งหมด (รวมถึงผู้ขาย)
+            usersList: [],
 
             // --- Actions ---
-            // ⭐️ เมื่อ Backend บอกว่าล็อกอินผ่าน ก็ส่งข้อมูล User มาเก็บไว้ที่นี่
             loginSuccess: (user) => {
                 set({ 
                     isLoggedIn: true, 
@@ -41,16 +48,63 @@ export const useAuthStore = create<AuthState>()(
                 });
             },
 
-            // ⭐️ เคลียร์ข้อมูลทิ้งตอนกดออกจากระบบ
             logout: () => {
                 set({ 
                     isLoggedIn: false, 
                     currentUser: null 
                 });
             },
+
+            updateProfileDisplay: (updates) => {
+                set((state) => ({
+                    currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null
+                }));
+            },
+
+            fetchUsers: async () => {
+                try {
+                    const response = await fetch('http://localhost:5000/api/users');
+                    const data = await response.json();
+                    set({ usersList: data });
+                } catch (error) {
+                    console.error('Fetch users error:', error);
+                }
+            },
+
+            updateUserRole: async (userId, role) => {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role })
+                    });
+                    if (response.ok) {
+                        const { user } = await response.json();
+                        set((state) => ({
+                            usersList: state.usersList.map(u => u.id === userId ? { ...u, role: user.role } : u)
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Update user role error:', error);
+                }
+            },
+
+            approveUserVerification: async (userId) => {
+                // สำหรับตอนนี้เราจะใช้ role SELLER แทนการอนุมัติ
+                await get().updateUserRole(userId, 'SELLER');
+                set((state) => ({
+                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'APPROVED' } : u)
+                }));
+            },
+
+            rejectUserVerification: async (userId) => {
+                set((state) => ({
+                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'REJECTED' } : u)
+                }));
+            },
         }),
         { 
-            name: 'auth-storage', // ชื่อกุญแจที่ใช้เซฟลง LocalStorage 
+            name: 'auth-storage', 
         }
     )
 );

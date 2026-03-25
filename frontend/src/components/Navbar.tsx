@@ -13,7 +13,8 @@ export default function Navbar() {
     const router = useRouter();
     
     const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-    const role = useAuthStore((state) => state.role);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const role = currentUser?.role;
     const logout = useAuthStore((state) => state.logout);
 
     // ⭐️ 2. สั่งให้หน่วงเวลาตอนโหลดครั้งแรก ป้องกันเว็บค้าง

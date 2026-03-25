@@ -14,11 +14,12 @@ import { useUserStore } from '@/stores/useUserStore';
 
 export default function ProfilePage() {
     // (ดึงจาก AuthStore ... เหมือนเดิม)
-    const email = useAuthStore((state) => state.email);
-    const currentUsername = useAuthStore((state) => state.username);
-    const currentImageUrl = useAuthStore((state) => state.profileImageUrl);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const email = currentUser?.email;
+    const currentUsername = currentUser?.username;
+    const currentImageUrl = (currentUser as any)?.profileImageUrl;
     const updateProfileDisplay = useAuthStore((state) => state.updateProfileDisplay);
-    const role = useAuthStore((state) => state.role);
+    const role = currentUser?.role;
 
     // 🟢 2. ดึง Action จาก Store ฐานข้อมูล User
     const updateUserProfile = useUserStore((state) => state.updateUserProfile);

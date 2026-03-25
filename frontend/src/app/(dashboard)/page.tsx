@@ -80,12 +80,13 @@ const AllListingsManager = () => {
     // (โค้ด ... เหมือนเดิม)
     const allListings = usePropertyStore((state) => state.properties);
     const deleteProperty = usePropertyStore((state) => state.deleteProperty);
-    const userId = useAuthStore((state) => state.userId);
-    const role = useAuthStore((state) => state.role);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const userId = currentUser?.id;
+    const role = currentUser?.role;
     
     const handleDelete = (id: string) => {
         if (confirm('คุณ (Admin) แน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
-            deleteProperty(id, userId || '', role); 
+            deleteProperty(id, userId ? String(userId) : '', role || 'USER'); 
         }
     };
     

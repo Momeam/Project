@@ -12,7 +12,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     // ⭐️⭐️ แก้ไขจุดนี้: ดึง State แยกกันเพื่อป้องกัน Infinite Loop (getSnapshot error) ⭐️⭐️
     // การดึงแบบ Object { ... } จะทำให้ React คิดว่าเป็นค่าใหม่ตลอดเวลา
     const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-    const role = useAuthStore((state) => state.role);
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const role = currentUser?.role;
 
     useEffect(() => {
         setIsMounted(true);
