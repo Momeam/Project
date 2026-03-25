@@ -290,25 +290,7 @@ app.post('/api/properties', async (req, res) => {
     }
 });
 
-// [GET] ดึงข้อมูลประกาศ "รายตัว" ตาม ID
-app.get('/api/properties/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        // ค้นหาใน Database ว่ามี ID นี้ไหม
-        const result = await pool.query('SELECT * FROM Properties WHERE id = $1', [id]);
-        
-        if (result.rows.length === 0) {
-            // 🔴 ถ้าไม่เจอ ส่ง 404 กลับไป
-            return res.status(404).json({ error: 'ไม่พบข้อมูลประกาศนี้' });
-        }
-        
-        // 🟢 ถ้าเจอ ส่งข้อมูลบ้านหลังนั้นกลับไป
-        res.status(200).json(result.rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// [PUT] แก้ไขประกาศ
 app.put('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -326,6 +308,7 @@ app.put('/api/properties/:id', async (req, res) => {
     }
 });
 
+// [DELETE] ลบประกาศ
 app.delete('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;
