@@ -125,7 +125,7 @@ export default function ListingDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 py-8">
+        <div className="min-h-screen bg-slate-50/50 pt-32 pb-8">
             <div className="container mx-auto px-4 max-w-6xl">
                 {/* Breadcrumb & Actions */}
                 <div className="flex justify-between items-center mb-6">

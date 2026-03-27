@@ -34,7 +34,7 @@ export default function SellerProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50">
+        <div className="min-h-screen bg-slate-50/50 pt-24">
             {/* Banner / Cover */}
             <div className="h-48 bg-slate-900 w-full relative">
                 <div className="absolute top-4 left-4">

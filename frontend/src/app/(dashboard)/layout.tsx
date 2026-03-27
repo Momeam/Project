@@ -20,9 +20,11 @@ export default function DashboardLayout({
     allowedRoles = ['USER', 'SELLER'];
   }
 
-  return (
-    <ProtectedRoute allowedRoles={allowedRoles}>
-      {children}
-    </ProtectedRoute>
-  );
-}
+    return (
+      <ProtectedRoute allowedRoles={allowedRoles}>
+        <div className="pt-28 md:pt-32 min-h-screen">
+          {children}
+        </div>
+      </ProtectedRoute>
+    );
+  }
