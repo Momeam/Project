@@ -39,7 +39,7 @@ interface AuthState {
     
     // Actions สำหรับ Seller OTP
     requestOtp: (tel: string) => Promise<string | null>;
-    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<boolean>;
+    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -166,12 +166,12 @@ export const useAuthStore = create<AuthState>()(
                                 justUpgraded: true // 👈 ตั้งค่าเป็น true ทันทีหลังสำเร็จ
                             });
                         }
-                        return true;
+                        return { success: true };
                     }
-                    return false;
+                    return { success: false, error: data.error || 'เกิดข้อผิดพลาด' };
                 } catch (error) {
                     console.error('Verify OTP error:', error);
-                    return false;
+                    return { success: false, error: 'ไม่สามารถเชื่อมต่อ Backend ได้ กรุณาตรวจสอบว่า Server เปิดอยู่' };
                 }
             },
         }),

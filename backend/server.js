@@ -58,6 +58,57 @@ async function sendRealSMS(tel, otp) {
     }
 }
 
+// ===================================================
+// 🛡️ Validation Functions - ตรวจสอบข้อมูลผู้สมัครผู้ขาย
+// ===================================================
+
+/**
+ * ตรวจสอบเลขบัตรประชาชนไทย 13 หลัก (Checksum Algorithm)
+ */
+function validateThaiIdCard(id) {
+    if (!id) return { isValid: false, message: 'กรุณากรอกเลขบัตรประชาชน' };
+    const cleanId = id.replace(/[\s-]/g, '');
+    if (!/^\d{13}$/.test(cleanId)) return { isValid: false, message: 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก' };
+    if (cleanId[0] === '0') return { isValid: false, message: 'เลขบัตรประชาชนหลักแรกต้องไม่เป็น 0' };
+
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+        sum += parseInt(cleanId[i]) * (13 - i);
+    }
+    const checkDigit = (11 - (sum % 11)) % 10;
+    if (checkDigit !== parseInt(cleanId[12])) {
+        return { isValid: false, message: 'เลขบัตรประชาชนไม่ถูกต้อง (Checksum ไม่ผ่าน)' };
+    }
+    return { isValid: true, message: 'OK' };
+}
+
+/**
+ * ตรวจสอบเบอร์โทรศัพท์มือถือไทย
+ */
+function validateThaiPhoneNumber(tel) {
+    if (!tel) return { isValid: false, message: 'กรุณากรอกเบอร์โทรศัพท์' };
+    const cleanTel = tel.replace(/[\s-]/g, '');
+    if (!/^\d{10}$/.test(cleanTel)) return { isValid: false, message: 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก' };
+    if (!/^0[689]/.test(cleanTel)) return { isValid: false, message: 'เบอร์มือถือต้องเริ่มด้วย 06, 08 หรือ 09' };
+    return { isValid: true, message: 'OK' };
+}
+
+/**
+ * ตรวจสอบชื่อ-นามสกุลภาษาไทย
+ */
+function validateThaiFullName(name) {
+    if (!name || !name.trim()) return { isValid: false, message: 'กรุณากรอกชื่อ-นามสกุล' };
+    const trimmed = name.trim();
+    // ตรวจว่ามีตัวอักษรภาษาไทย
+    if (!/[\u0E00-\u0E7F]/.test(trimmed)) return { isValid: false, message: 'ชื่อ-นามสกุลต้องเป็นภาษาไทย' };
+    const parts = trimmed.split(/\s+/).filter(p => p.length > 0);
+    const prefixes = ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.', 'เด็กชาย', 'เด็กหญิง'];
+    let nameParts = [...parts];
+    if (prefixes.includes(nameParts[0])) nameParts = nameParts.slice(1);
+    if (nameParts.length < 2) return { isValid: false, message: 'กรุณากรอกทั้งชื่อและนามสกุล' };
+    return { isValid: true, message: 'OK' };
+}
+
 // ฟังก์ชันเชื่อมต่อและสร้างตารางอัตโนมัติ
 async function connectPostgres() {
     try {
@@ -402,6 +453,40 @@ app.post('/api/users/verify-otp', async (req, res) => {
 
         // ลบ OTP ทิ้งหลังใช้แล้ว
         delete otps[tel];
+
+        // 🛡️ ตรวจสอบความถูกต้องของข้อมูลก่อนบันทึก
+        const idCardResult = validateThaiIdCard(idCardNumber);
+        if (!idCardResult.isValid) {
+            return res.status(400).json({ error: `เลขบัตรประชาชนไม่ถูกต้อง: ${idCardResult.message}` });
+        }
+
+        const telResult = validateThaiPhoneNumber(tel);
+        if (!telResult.isValid) {
+            return res.status(400).json({ error: `เบอร์โทรศัพท์ไม่ถูกต้อง: ${telResult.message}` });
+        }
+
+        const nameResult = validateThaiFullName(fullName);
+        if (!nameResult.isValid) {
+            return res.status(400).json({ error: `ชื่อ-นามสกุลไม่ถูกต้อง: ${nameResult.message}` });
+        }
+
+        // 🛡️ ตรวจสอบซ้ำ: เลขบัตรประชาชนถูกใช้ไปแล้วหรือยัง
+        const duplicateIdCard = await pool.query(
+            'SELECT id, username FROM Users WHERE id_card_number = $1 AND email != $2',
+            [idCardNumber, email]
+        );
+        if (duplicateIdCard.rows.length > 0) {
+            return res.status(400).json({ error: 'เลขบัตรประชาชนนี้ถูกลงทะเบียนโดยผู้ใช้อื่นแล้ว' });
+        }
+
+        // 🛡️ ตรวจสอบซ้ำ: เบอร์โทรถูกใช้โดย SELLER คนอื่นแล้วหรือยัง
+        const duplicateTel = await pool.query(
+            "SELECT id, username FROM Users WHERE tel = $1 AND email != $2 AND role = 'SELLER'",
+            [tel, email]
+        );
+        if (duplicateTel.rows.length > 0) {
+            return res.status(400).json({ error: 'เบอร์โทรศัพท์นี้ถูกใช้สมัครเป็นผู้ขายโดยผู้ใช้อื่นแล้ว' });
+        }
 
         // อัปเกรดบทบาทเป็น SELLER และบันทึกข้อมูลส่วนตัว
         const queryText = `

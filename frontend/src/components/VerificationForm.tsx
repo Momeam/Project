@@ -1,10 +1,28 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FileText, Phone, Mail, MessageSquare, ShieldCheck, Loader2, RefreshCcw, PartyPopper } from 'lucide-react';
+import { FileText, Phone, Mail, MessageSquare, ShieldCheck, Loader2, RefreshCcw, PartyPopper, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import {
+    validateThaiIdCard,
+    validateThaiPhoneNumber,
+    validateThaiFullName,
+    validateAllSellerData,
+    type ValidationResult
+} from '@/lib/validators/idCardValidator';
+
+// ✅ Component แสดงผลข้อความ Validation แบบ Realtime
+function FieldValidation({ result, show }: { result: ValidationResult | null; show: boolean }) {
+    if (!show || !result) return null;
+    return (
+        <p className={`text-xs mt-1 flex items-center gap-1 ${result.isValid ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {result.isValid ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+            {result.message}
+        </p>
+    );
+}
 
 export default function VerificationForm() {
     const { currentUser, requestOtp, verifyOtp } = useAuthStore();
@@ -20,12 +38,66 @@ export default function VerificationForm() {
     const [step, setStep] = useState(1); // 1: Info, 2: OTP, 3: Success
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const [receivedOtp, setReceivedOtp] = useState<string | null>(null); // สำหรับ Mock
+    const [receivedOtp, setReceivedOtp] = useState<string | null>(null);
     const [resendTimer, setResendTimer] = useState(0);
+
+    // 🛡️ Validation State
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [validationResults, setValidationResults] = useState<Record<string, ValidationResult>>({});
+
+    // 🛡️ Validate ทันทีเมื่อกรอกข้อมูล
+    const runValidation = useCallback((name: string, value: string) => {
+        let result: ValidationResult | null = null;
+        switch (name) {
+            case 'fullName':
+                result = validateThaiFullName(value);
+                break;
+            case 'idCardNumber':
+                result = validateThaiIdCard(value);
+                break;
+            case 'tel':
+                result = validateThaiPhoneNumber(value);
+                break;
+        }
+        if (result) {
+            setValidationResults(prev => ({ ...prev, [name]: result! }));
+        }
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        let processedValue = value;
+
+        // จำกัดให้กรอกเฉพาะตัวเลข สำหรับเลขบัตรและเบอร์โทร
+        if (name === 'idCardNumber') {
+            processedValue = value.replace(/\D/g, '').slice(0, 13);
+        }
+        if (name === 'tel') {
+            processedValue = value.replace(/\D/g, '').slice(0, 10);
+        }
+
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
+        
+        // Validate realtime เมื่อ field ถูกแตะแล้ว
+        if (touched[name]) {
+            runValidation(name, processedValue);
+        }
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        runValidation(name, value);
+    };
+
+    // ตรวจสอบว่าฟอร์มถูกต้องทั้งหมดหรือไม่
+    const isFormValid = () => {
+        const { isValid } = validateAllSellerData({
+            fullName: formData.fullName,
+            idCardNumber: formData.idCardNumber,
+            tel: formData.tel,
+        });
+        return isValid && formData.email.trim() !== '' && formData.lineId.trim() !== '';
     };
 
     const startTimer = () => {
@@ -43,6 +115,25 @@ export default function VerificationForm() {
 
     const handleRequestOtp = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
+
+        // 🛡️ Validate ข้อมูลทั้งหมดก่อนส่ง
+        setTouched({ fullName: true, idCardNumber: true, tel: true });
+        runValidation('fullName', formData.fullName);
+        runValidation('idCardNumber', formData.idCardNumber);
+        runValidation('tel', formData.tel);
+
+        const { isValid, errors } = validateAllSellerData({
+            fullName: formData.fullName,
+            idCardNumber: formData.idCardNumber,
+            tel: formData.tel,
+        });
+
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            setMessage({ text: firstError || 'กรุณาตรวจสอบข้อมูลอีกครั้ง', type: 'error' });
+            return;
+        }
+
         setIsLoading(true);
         setMessage(null);
         
@@ -63,18 +154,18 @@ export default function VerificationForm() {
         setIsLoading(true);
         setMessage(null);
 
-        const success = await verifyOtp(formData.tel, otp, {
+        const result = await verifyOtp(formData.tel, otp, {
             fullName: formData.fullName,
             idCardNumber: formData.idCardNumber,
             email: formData.email,
             lineId: formData.lineId
         });
 
-        if (success) {
+        if (result.success) {
             setStep(3);
             setMessage({ text: 'ยืนยันตัวตนสำเร็จ! คุณเป็นผู้ขายแล้ว 🎉', type: 'success' });
         } else {
-            setMessage({ text: 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ', type: 'error' });
+            setMessage({ text: result.error || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ', type: 'error' });
         }
         setIsLoading(false);
     };
@@ -159,26 +250,100 @@ export default function VerificationForm() {
             <CardContent>
                 {step === 1 ? (
                     <form onSubmit={handleRequestOtp} className="space-y-4">
+                        {/* 🔔 คำแนะนำ */}
+                        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-3 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                                ระบบจะตรวจสอบความถูกต้องของข้อมูลแบบ Realtime กรุณากรอกข้อมูลจริงเท่านั้น
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-4">
+                            {/* ชื่อ-นามสกุล */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-slate-400" /> ชื่อ-นามสกุลจริง
+                                    <FileText className="w-4 h-4 text-slate-400" /> ชื่อ-นามสกุลจริง (ภาษาไทย)
                                 </label>
-                                <Input name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="นาย สมชาย ใจดี" className="h-11" />
+                                <div className="relative">
+                                    <Input 
+                                        name="fullName" 
+                                        value={formData.fullName} 
+                                        onChange={handleInputChange} 
+                                        onBlur={handleBlur}
+                                        required 
+                                        placeholder="สมชาย ใจดี" 
+                                        className={`h-11 pr-10 ${touched.fullName && validationResults.fullName ? (validationResults.fullName.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`} 
+                                    />
+                                    {touched.fullName && validationResults.fullName && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {validationResults.fullName.isValid 
+                                                ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
+                                                : <XCircle className="w-5 h-5 text-rose-500" />
+                                            }
+                                        </div>
+                                    )}
+                                </div>
+                                <FieldValidation result={validationResults.fullName || null} show={!!touched.fullName} />
                             </div>
+
+                            {/* เลขบัตรประชาชน */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                     <ShieldCheck className="w-4 h-4 text-slate-400" /> เลขบัตรประชาชน (13 หลัก)
                                 </label>
-                                <Input name="idCardNumber" value={formData.idCardNumber} onChange={handleInputChange} required maxLength={13} placeholder="1234567890123" className="h-11" />
+                                <div className="relative">
+                                    <Input 
+                                        name="idCardNumber" 
+                                        value={formData.idCardNumber} 
+                                        onChange={handleInputChange} 
+                                        onBlur={handleBlur}
+                                        required 
+                                        maxLength={13} 
+                                        placeholder="x-xxxx-xxxxx-xx-x" 
+                                        className={`h-11 pr-10 tracking-widest font-mono ${touched.idCardNumber && validationResults.idCardNumber ? (validationResults.idCardNumber.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`}
+                                    />
+                                    {touched.idCardNumber && validationResults.idCardNumber && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {validationResults.idCardNumber.isValid 
+                                                ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
+                                                : <XCircle className="w-5 h-5 text-rose-500" />
+                                            }
+                                        </div>
+                                    )}
+                                </div>
+                                <FieldValidation result={validationResults.idCardNumber || null} show={!!touched.idCardNumber} />
                             </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* เบอร์โทรศัพท์ */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium flex items-center gap-2">
                                         <Phone className="w-4 h-4 text-slate-400" /> เบอร์โทรศัพท์
                                     </label>
-                                    <Input name="tel" value={formData.tel} onChange={handleInputChange} required placeholder="08xxxxxxxx" className="h-11" />
+                                    <div className="relative">
+                                        <Input 
+                                            name="tel" 
+                                            value={formData.tel} 
+                                            onChange={handleInputChange} 
+                                            onBlur={handleBlur}
+                                            required 
+                                            maxLength={10}
+                                            placeholder="08xxxxxxxx" 
+                                            className={`h-11 pr-10 ${touched.tel && validationResults.tel ? (validationResults.tel.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`}
+                                        />
+                                        {touched.tel && validationResults.tel && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                {validationResults.tel.isValid 
+                                                    ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
+                                                    : <XCircle className="w-5 h-5 text-rose-500" />
+                                                }
+                                            </div>
+                                        )}
+                                    </div>
+                                    <FieldValidation result={validationResults.tel || null} show={!!touched.tel} />
                                 </div>
+
+                                {/* Line ID */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium flex items-center gap-2">
                                         <MessageSquare className="w-4 h-4 text-slate-400" /> Line ID
@@ -186,6 +351,8 @@ export default function VerificationForm() {
                                     <Input name="lineId" value={formData.lineId} onChange={handleInputChange} required placeholder="line_id" className="h-11" />
                                 </div>
                             </div>
+
+                            {/* อีเมล */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                     <Mail className="w-4 h-4 text-slate-400" /> อีเมล
@@ -195,12 +362,17 @@ export default function VerificationForm() {
                         </div>
 
                         {message && (
-                            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                            <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                                {message.type === 'error' ? <XCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
                                 {message.text}
                             </div>
                         )}
 
-                        <Button type="submit" disabled={isLoading} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 shadow-lg shadow-blue-500/20">
+                        <Button 
+                            type="submit" 
+                            disabled={isLoading || !isFormValid()} 
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                             ดำเนินการต่อเพื่อรับ OTP
                         </Button>
@@ -218,7 +390,7 @@ export default function VerificationForm() {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium block text-center">กรอกรหัส OTP 6 หลัก</label>
-                            <Input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6} placeholder="000000" className="h-14 text-center text-2xl tracking-[1em] font-bold border-2 focus:border-blue-500 rounded-xl" />
+                            <Input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6} placeholder="000000" className="h-14 text-center text-2xl tracking-[1em] font-bold border-2 focus:border-blue-500 rounded-xl" />
                         </div>
 
                         {message && (
