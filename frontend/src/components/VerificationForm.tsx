@@ -230,38 +230,63 @@ export default function VerificationForm() {
     }
 
     return (
-        <Card className="max-w-xl mx-auto shadow-lg dark:bg-gray-800 border-t-4 border-t-blue-500">
-            <CardHeader>
-                <div className="flex justify-between items-center mb-2">
-                    <div className="flex gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>1</div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>2</div>
+        <div className="flex flex-col md:flex-row bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 shadow-2xl rounded-3xl overflow-hidden w-full max-w-5xl mx-auto ring-1 ring-slate-900/5 dark:ring-white/5">
+            {/* 🌟 Left Image Side */}
+            <div className="w-full md:w-5/12 relative hidden md:block bg-slate-950 flex-shrink-0">
+                <img 
+                    src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
+                    alt="Premium Real Estate" 
+                    className="w-full h-full object-cover opacity-60 mix-blend-overlay"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
+                
+                <div className="absolute inset-x-0 bottom-0 p-10 flex flex-col justify-end h-full">
+                    <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-emerald-500/20">
+                        <ShieldCheck className="w-7 h-7 text-emerald-400" />
                     </div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step {step} of 2</span>
+                    <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight leading-tight">
+                        ร่วมเป็นพาร์ทเนอร์<br/>ระดับ <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">พรีเมียม</span>
+                    </h2>
+                    <p className="text-slate-300 font-medium leading-relaxed text-sm">
+                        เข้าถึงฐานลูกค้าคุณภาพและยกระดับการขายอสังหาริมทรัพย์ของคุณผ่านแพลตฟอร์ม HomeLink พร้อมเครื่องมือจัดการระดับมืออาชีพ
+                    </p>
                 </div>
-                <CardTitle className="text-2xl flex items-center">
-                    <ShieldCheck className="w-6 h-6 mr-2 text-blue-500" />
-                    {step === 1 ? 'ข้อมูลผู้สมัครเป็นผู้ขาย' : 'ยืนยันตัวตนด้วย OTP'}
-                </CardTitle>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {step === 1 ? 'กรุณากรอกข้อมูลส่วนตัวเพื่อใช้ในการยืนยันสิทธิ์ผู้ขาย' : 'ป้อนรหัส 6 หลักที่ได้รับทาง SMS'}
-                </p>
-            </CardHeader>
-            <CardContent>
+            </div>
+
+            {/* 🌟 Right Form Side */}
+            <div className="w-full md:w-7/12 p-8 md:p-12 relative flex flex-col justify-center">
+                {/* Header Steps */}
+                <div className="flex justify-between items-center mb-10">
+                    <div className="flex gap-3">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold shadow-md transition-all ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30 border border-blue-400/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>1</div>
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold shadow-md transition-all ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30 border border-blue-400/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'}`}>2</div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700">Step {step} of 2</span>
+                </div>
+
+                <div className="mb-8">
+                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">
+                        {step === 1 ? 'ข้อมูลผู้สมัครเป็นผู้ขาย' : 'ยืนยันตัวตนด้วย OTP'}
+                    </h3>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                        {step === 1 ? 'กรุณากรอกข้อมูลส่วนตัวเพื่อรักษาความปลอดภัยระดับสูงสุดของแพลตฟอร์ม' : 'ป้อนรหัส 6 หลักที่ได้รับทาง SMS เพื่อยืนยันความถูกต้อง'}
+                    </p>
+                </div>
+
                 {step === 1 ? (
-                    <form onSubmit={handleRequestOtp} className="space-y-4">
+                    <form onSubmit={handleRequestOtp} className="space-y-5">
                         {/* 🔔 คำแนะนำ */}
-                        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-3 rounded-lg flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                            <p className="text-xs text-blue-700 dark:text-blue-300">
-                                ระบบจะตรวจสอบความถูกต้องของข้อมูลแบบ Realtime กรุณากรอกข้อมูลจริงเท่านั้น
+                        <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 p-4 rounded-xl flex items-start gap-3 shadow-sm">
+                            <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-blue-800 dark:text-blue-300 font-medium leading-relaxed">
+                                ระบบจะตรวจสอบความถูกต้องของข้อมูลแบบ Realtime กรุณากรอกข้อมูลจริงเท่านั้นเพื่อสิทธิประโยชน์สูงสุด
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-1 gap-5">
                             {/* ชื่อ-นามสกุล */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                     <FileText className="w-4 h-4 text-slate-400" /> ชื่อ-นามสกุลจริง (ภาษาไทย)
                                 </label>
                                 <div className="relative">
@@ -272,10 +297,10 @@ export default function VerificationForm() {
                                         onBlur={handleBlur}
                                         required 
                                         placeholder="สมชาย ใจดี" 
-                                        className={`h-11 pr-10 ${touched.fullName && validationResults.fullName ? (validationResults.fullName.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`} 
+                                        className={`h-12 pr-10 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-blue-500/50 ${touched.fullName && validationResults.fullName ? (validationResults.fullName.isValid ? 'border-emerald-500 focus-visible:ring-emerald-500/50' : 'border-rose-500 focus-visible:ring-rose-500/50') : ''}`} 
                                     />
                                     {touched.fullName && validationResults.fullName && (
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-full">
                                             {validationResults.fullName.isValid 
                                                 ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
                                                 : <XCircle className="w-5 h-5 text-rose-500" />
@@ -287,8 +312,8 @@ export default function VerificationForm() {
                             </div>
 
                             {/* เลขบัตรประชาชน */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                     <ShieldCheck className="w-4 h-4 text-slate-400" /> เลขบัตรประชาชน (13 หลัก)
                                 </label>
                                 <div className="relative">
@@ -300,10 +325,10 @@ export default function VerificationForm() {
                                         required 
                                         maxLength={13} 
                                         placeholder="x-xxxx-xxxxx-xx-x" 
-                                        className={`h-11 pr-10 tracking-widest font-mono ${touched.idCardNumber && validationResults.idCardNumber ? (validationResults.idCardNumber.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`}
+                                        className={`h-12 pr-10 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-700 rounded-xl tracking-widest font-mono focus-visible:ring-blue-500/50 ${touched.idCardNumber && validationResults.idCardNumber ? (validationResults.idCardNumber.isValid ? 'border-emerald-500 focus-visible:ring-emerald-500/50' : 'border-rose-500 focus-visible:ring-rose-500/50') : ''}`}
                                     />
                                     {touched.idCardNumber && validationResults.idCardNumber && (
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-full">
                                             {validationResults.idCardNumber.isValid 
                                                 ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
                                                 : <XCircle className="w-5 h-5 text-rose-500" />
@@ -314,10 +339,10 @@ export default function VerificationForm() {
                                 <FieldValidation result={validationResults.idCardNumber || null} show={!!touched.idCardNumber} />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {/* เบอร์โทรศัพท์ */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium flex items-center gap-2">
+                                <div className="space-y-2.5">
+                                    <label className="text-sm font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                         <Phone className="w-4 h-4 text-slate-400" /> เบอร์โทรศัพท์
                                     </label>
                                     <div className="relative">
@@ -329,10 +354,10 @@ export default function VerificationForm() {
                                             required 
                                             maxLength={10}
                                             placeholder="08xxxxxxxx" 
-                                            className={`h-11 pr-10 ${touched.tel && validationResults.tel ? (validationResults.tel.isValid ? 'border-emerald-500 focus:border-emerald-500' : 'border-rose-500 focus:border-rose-500') : ''}`}
+                                            className={`h-12 pr-10 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-blue-500/50 ${touched.tel && validationResults.tel ? (validationResults.tel.isValid ? 'border-emerald-500 focus-visible:ring-emerald-500/50' : 'border-rose-500 focus-visible:ring-rose-500/50') : ''}`}
                                         />
                                         {touched.tel && validationResults.tel && (
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-full">
                                                 {validationResults.tel.isValid 
                                                     ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> 
                                                     : <XCircle className="w-5 h-5 text-rose-500" />
@@ -344,26 +369,26 @@ export default function VerificationForm() {
                                 </div>
 
                                 {/* Line ID */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium flex items-center gap-2">
+                                <div className="space-y-2.5">
+                                    <label className="text-sm font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                         <MessageSquare className="w-4 h-4 text-slate-400" /> Line ID
                                     </label>
-                                    <Input name="lineId" value={formData.lineId} onChange={handleInputChange} required placeholder="line_id" className="h-11" />
+                                    <Input name="lineId" value={formData.lineId} onChange={handleInputChange} required placeholder="line_id" className="h-12 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-blue-500/50" />
                                 </div>
                             </div>
 
                             {/* อีเมล */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
+                            <div className="space-y-2.5">
+                                <label className="text-sm font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                     <Mail className="w-4 h-4 text-slate-400" /> อีเมล
                                 </label>
-                                <Input name="email" type="email" value={formData.email} onChange={handleInputChange} required placeholder="example@email.com" className="h-11" />
+                                <Input name="email" type="email" value={formData.email} onChange={handleInputChange} required placeholder="example@email.com" className="h-12 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-blue-500/50" />
                             </div>
                         </div>
 
                         {message && (
-                            <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                                {message.type === 'error' ? <XCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                            <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-3 mt-2 ${message.type === 'success' ? 'bg-emerald-50/80 text-emerald-700 border border-emerald-200' : 'bg-rose-50/80 text-rose-700 border border-rose-200'}`}>
+                                {message.type === 'error' ? <XCircle className="w-5 h-5 shrink-0" /> : <CheckCircle2 className="w-5 h-5 shrink-0" />}
                                 {message.text}
                             </div>
                         )}
@@ -371,38 +396,47 @@ export default function VerificationForm() {
                         <Button 
                             type="submit" 
                             disabled={isLoading || !isFormValid()} 
-                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg font-bold rounded-xl mt-6 shadow-xl shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98]"
                         >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                            {isLoading ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : null}
                             ดำเนินการต่อเพื่อรับ OTP
                         </Button>
                     </form>
                 ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-6">
-                        <div className="text-center space-y-2">
-                            <p className="text-sm text-slate-600">รหัส OTP ถูกส่งไปที่เบอร์ <span className="font-bold text-slate-900">{formData.tel}</span></p>
+                    <form onSubmit={handleVerifyOtp} className="space-y-8">
+                        <div className="text-center space-y-3 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">รหัส OTP ถูกส่งไปที่เบอร์</p>
+                            <p className="text-2xl font-black text-slate-900 dark:text-white tracking-widest">{formData.tel}</p>
                             {receivedOtp && (
-                                <div className="bg-amber-50 border border-amber-100 p-2 rounded-lg inline-block">
-                                    <p className="text-xs text-amber-700 font-medium">รหัสทดสอบ (Mock): <span className="text-sm font-bold">{receivedOtp}</span></p>
+                                <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 px-4 py-2 rounded-xl inline-block shadow-sm">
+                                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">รหัสทดสอบ (Mock): <span className="text-sm font-bold ml-1">{receivedOtp}</span></p>
                                 </div>
                             )}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium block text-center">กรอกรหัส OTP 6 หลัก</label>
-                            <Input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6} placeholder="000000" className="h-14 text-center text-2xl tracking-[1em] font-bold border-2 focus:border-blue-500 rounded-xl" />
+                        <div className="space-y-4">
+                            <label className="text-sm font-bold block text-center text-slate-700 dark:text-slate-300">กรอกรหัส OTP 6 หลัก</label>
+                            <Input 
+                                value={otp} 
+                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                                required 
+                                maxLength={6} 
+                                placeholder="000000" 
+                                className="h-16 text-center text-3xl tracking-[1em] font-black border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500/50 bg-white/50 dark:bg-slate-950/50 rounded-2xl shadow-inner transition-all focus:ring-4 focus:ring-blue-500/20" 
+                            />
                         </div>
 
                         {message && (
-                            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                            <div className={`p-4 rounded-xl text-sm font-medium flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50/80 text-emerald-700 border border-emerald-200' : 'bg-rose-50/80 text-rose-700 border border-rose-200'}`}>
+                                {message.type === 'error' ? <XCircle className="w-5 h-5 shrink-0" /> : <CheckCircle2 className="w-5 h-5 shrink-0" />}
                                 {message.text}
                             </div>
                         )}
 
-                        <div className="flex flex-col gap-3">
-                            <Button type="submit" disabled={isLoading || otp.length < 6} className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20">
-                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                                ยืนยันรหัส OTP และส่งใบสมัคร
+                        <div className="flex flex-col gap-4 mt-8">
+                            <Button type="submit" disabled={isLoading || otp.length < 6} className="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-lg font-bold rounded-xl shadow-xl shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                {isLoading ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : null}
+                                ยืนยันรหัส OTP และส่วใบสมัคร
                             </Button>
 
                             <Button 
@@ -410,19 +444,19 @@ export default function VerificationForm() {
                                 variant="outline" 
                                 onClick={() => handleRequestOtp()} 
                                 disabled={isLoading || resendTimer > 0}
-                                className="w-full h-12 border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                                className="w-full h-14 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                             >
-                                <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                <RefreshCcw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                                 {resendTimer > 0 ? `ส่งรหัสอีกครั้งใน (${resendTimer}s)` : 'ส่งรหัส OTP อีกครั้ง'}
                             </Button>
                             
-                            <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-slate-500">
+                            <Button type="button" variant="ghost" onClick={() => setStep(1)} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium">
                                 ย้อนกลับเพื่อแก้ไขข้อมูล
                             </Button>
                         </div>
                     </form>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

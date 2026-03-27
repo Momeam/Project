@@ -21,6 +21,7 @@ export interface Property {
     landSize?: number;
     bedrooms: number; 
     bathrooms: number;
+    interiorDetails?: string;
     floor?: number; 
     yearBuilt?: number; 
     furniture?: 'NONE' | 'PARTLY' | 'FULLY'; 
@@ -82,6 +83,7 @@ export const usePropertyStore = create<PropertyState>()(
                     const data = await response.json();
                     const safeData = data.map((item: any) => ({
                         ...item,
+                        interiorDetails: item.interiordetails || item.interiorDetails || '',
                         images: item.images || [],
                         features: item.features || [],
                         contact: item.contact || { id: 'c_default', phoneNumber: '-', email: '-' }

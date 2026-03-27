@@ -120,7 +120,7 @@ async function connectPostgres() {
             CREATE TABLE IF NOT EXISTS Properties (
                 id SERIAL PRIMARY KEY, userId VARCHAR(255), title VARCHAR(255), description TEXT,
                 type VARCHAR(50), category VARCHAR(50), price DECIMAL(18,2), address VARCHAR(255),
-                province VARCHAR(100), bedrooms INT, bathrooms INT, size INT, status VARCHAR(50) DEFAULT 'ACTIVE',
+                province VARCHAR(100), bedrooms INT, bathrooms INT, size INT, "interiorDetails" TEXT, status VARCHAR(50) DEFAULT 'ACTIVE',
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -146,6 +146,7 @@ async function connectPostgres() {
             ALTER TABLE Users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);
             ALTER TABLE Users ADD COLUMN IF NOT EXISTS id_card_number VARCHAR(13);
             ALTER TABLE Users ADD COLUMN IF NOT EXISTS line_id VARCHAR(100);
+            ALTER TABLE Properties ADD COLUMN IF NOT EXISTS "interiorDetails" TEXT;
         `);
         
         // 🗄️ สร้างตาราง Announcements (ประกาศสิทธิพิเศษ)
@@ -553,15 +554,15 @@ app.post('/api/properties', async (req, res) => {
         }
 
         const queryText = `INSERT INTO Properties 
-            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE') 
+            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE') 
             RETURNING *`; 
         
         const values = [
             p.userId || '1', p.title, p.description || '', 
             p.type || 'SALE', p.category || 'CONDO', p.price, 
             p.address || '', p.province || '', p.bedrooms || 0, 
-            p.bathrooms || 0, p.size || 0
+            p.bathrooms || 0, p.size || 0, p.interiorDetails || ''
         ];
         
         const result = await pool.query(queryText, values);
@@ -577,8 +578,8 @@ app.put('/api/properties/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const p = req.body;
-        const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4 WHERE id=$5 RETURNING *`;
-        const values = [p.title, p.price, p.description, p.address, id];
+        const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5 WHERE id=$6 RETURNING *`;
+        const values = [p.title, p.price, p.description, p.address, p.interiorDetails || '', id];
         const result = await pool.query(queryText, values);
         
         if (result.rows.length === 0) {

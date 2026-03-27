@@ -31,6 +31,7 @@ export interface Property {
     size: number;
     bedrooms: number;
     bathrooms: number;
+    interiorDetails?: string;
     contact: PropertyContact;
     images: PropertyImage[];
     features: string[];
@@ -76,6 +77,7 @@ const MOCK_PROPERTIES: Property[] = [
         address: '123 ถ.สุขุมวิท 21', district: 'คลองเตย', province: 'กรุงเทพฯ',
         postalCode: '10110', price: 5500000, size: 35,
         bedrooms: 1, bathrooms: 1,
+        interiorDetails: 'เฟอร์นิเจอร์ครบชุด, เครื่องปรับอากาศ 2 เครื่อง',
         // ⭐️ อัปเดต Contact
         contact: { phoneNumber: '0812345678', email: 'seller1@test.com', line: 'seller_line_1', facebook: 'facebook.com/s1' },
         images: [{ id: 'i1', url: 'https://placehold.co/800x600/a2d2ff/ffffff?text=Condo+Image+1', order: 1 }],

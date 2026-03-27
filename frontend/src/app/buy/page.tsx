@@ -27,64 +27,68 @@ export default function BuyPage() {
     }, [properties, searchQuery]);
 
     return (
-        <div className="container mx-auto p-4 md:py-8 max-w-7xl">
-            {/* Header ค้นหา (ดีไซน์เดียวกับหน้าแรก) */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-                <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">ค้นหาอสังหาฯ สำหรับ "ซื้อ"</h1>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <Input 
-                        placeholder="พิมพ์ชื่อโครงการ, ย่าน, หรือจังหวัด..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-12 text-lg"
-                    />
-                </div>
-                <p className="text-sm text-gray-500 mt-2 text-right">พบประกาศ {filteredProperties.length} รายการ</p>
-            </div>
-
-            {/* Grid แสดงผล */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProperties.length > 0 ? (
-                    filteredProperties.map((property) => (
-                        <Link href={`/listings/${property.id}`} key={property.id} className="group">
-                            <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full group-hover:-translate-y-1">
-                                <div className="aspect-video bg-gray-200 relative overflow-hidden">
-                                    <img 
-                                        src={property.images[0]?.url || 'https://placehold.co/600x400?text=No+Image'} 
-                                        alt={property.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    {/* ⭐️ ป้าย "ขาย" สีเขียว */}
-                                    <span className="absolute top-3 right-3 bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
-                                        ขาย
-                                    </span>
-                                </div>
-                                <CardContent className="p-5">
-                                    <h3 className="font-bold text-lg line-clamp-1 mb-2 text-gray-800 dark:text-white group-hover:text-green-600 transition-colors">
-                                        {property.title}
-                                    </h3>
-                                    <div className="flex items-baseline gap-1 mb-3">
-                                        <p className="text-red-600 font-bold text-xl">฿{property.price.toLocaleString()}</p>
-                                    </div>
-                                    <div className="flex items-center text-gray-500 text-sm mb-4">
-                                        <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                                        <span className="line-clamp-1">{property.address}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300">
-                                        <span className="flex items-center gap-1"><Bed className="w-4 h-4"/> {property.bedrooms} นอน</span>
-                                        <span className="flex items-center gap-1"><Bath className="w-4 h-4"/> {property.bathrooms} น้ำ</span>
-                                        <span className="flex items-center gap-1"><Ruler className="w-4 h-4"/> {property.size} ตร.ม.</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))
-                ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed">
-                        <p className="text-lg">ไม่พบประกาศสำหรับขายในขณะนี้</p>
+        <div className="min-h-screen bg-slate-950 text-slate-50 pt-32 pb-20">
+            <div className="container mx-auto px-4 max-w-7xl">
+                {/* Header ค้นหา (Premium Dark Design) */}
+                <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-slate-800 mb-10">
+                    <h1 className="text-3xl font-bold mb-6 text-white tracking-tight">ค้นหาอสังหาฯ สำหรับ <span className="text-emerald-400">"ซื้อ"</span></h1>
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
+                        <Input 
+                            placeholder="พิมพ์ชื่อโครงการ, ย่าน, หรือจังหวัด..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-12 h-14 text-lg bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-500 rounded-2xl focus-visible:ring-emerald-500/50"
+                        />
                     </div>
-                )}
+                    <p className="text-sm text-slate-400 mt-4 text-right font-medium">พบประกาศ <span className="text-emerald-400 font-bold">{filteredProperties.length}</span> รายการ</p>
+                </div>
+
+                {/* Grid แสดงผล */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredProperties.length > 0 ? (
+                        filteredProperties.map((property) => (
+                            <Link href={`/listings/${property.id}`} key={property.id} className="group">
+                                <Card className="overflow-hidden border border-slate-800 bg-slate-900/40 backdrop-blur-sm shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-500/30 transition-all duration-500 h-full group-hover:-translate-y-2">
+                                    <div className="aspect-video bg-slate-800 relative overflow-hidden">
+                                        <img 
+                                            src={property.images[0]?.url || 'https://placehold.co/600x400?text=No+Image'} 
+                                            alt={property.title}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
+                                        <span className="absolute top-4 right-4 bg-emerald-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-emerald-400/20">
+                                            ขาย
+                                        </span>
+                                    </div>
+                                    <CardContent className="p-6">
+                                        <h3 className="font-bold text-xl line-clamp-1 mb-3 text-white group-hover:text-emerald-400 transition-colors">
+                                            {property.title}
+                                        </h3>
+                                        <div className="flex items-baseline gap-1 mb-4">
+                                            <p className="text-emerald-400 font-bold text-2xl tracking-tight">฿{property.price.toLocaleString()}</p>
+                                        </div>
+                                        <div className="flex items-center text-slate-400 text-sm mb-6">
+                                            <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-emerald-500" />
+                                            <span className="line-clamp-1">{property.address}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-5 border-t border-slate-800 text-sm text-slate-300 font-medium">
+                                            <span className="flex items-center gap-1.5"><Bed className="w-4 h-4 text-emerald-500/70"/> {property.bedrooms} นอน</span>
+                                            <span className="flex items-center gap-1.5"><Bath className="w-4 h-4 text-emerald-500/70"/> {property.bathrooms} น้ำ</span>
+                                            <span className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-emerald-500/70"/> {property.size} ตร.ม.</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ))
+                    ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-24 text-slate-500 bg-slate-900/20 rounded-3xl border-2 border-slate-800 border-dashed">
+                            <Search className="w-12 h-12 mb-4 text-slate-700" />
+                            <p className="text-xl font-medium">ไม่พบประกาศสำหรับขายในขณะนี้</p>
+                            <p className="text-sm mt-2">ลองเปลี่ยนคำค้นหาเพื่อพบประกาศที่ใช่</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

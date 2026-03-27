@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2 } from 'lucide-react';
+import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
@@ -202,9 +202,23 @@ export default function ListingDetailPage() {
                             </div>
 
                             <div className="mt-6">
-                                <h3 className="text-lg font-semibold text-slate-900 mb-3">รายละเอียด</h3>
-                                <p className="text-slate-600 leading-relaxed whitespace-pre-line">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
+                                <h3 className="text-lg font-semibold text-slate-900 mb-3 tracking-tight">รายละเอียด</h3>
+                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line text-lg">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
                             </div>
+                            
+                            {property.interiorDetails && (
+                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-emerald-500" />
+                                        จุดเด่นและรายละเอียดภายใน
+                                    </h3>
+                                    <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-900/50 shadow-inner">
+                                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line text-lg italic">
+                                            {property.interiorDetails}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Map & Calc */}

@@ -13,7 +13,7 @@ import { Home, MapPin, FileText, Key, Car, Sofa, Calendar, AlignLeft } from 'luc
 type FormDataState = {
     title: string; price: number; type: 'SALE' | 'RENT'; category: 'HOUSE' | 'CONDO' | 'LAND'; 
     address: string;
-    description: string;
+    description: string; interiorDetails: string;
     bedrooms: number; bathrooms: number; size: number;
     floor: number; yearBuilt: number; parking: number; landSize: number;
     furniture: 'NONE' | 'PARTLY' | 'FULLY';
@@ -45,7 +45,7 @@ export default function AddListingForm() {
 
     const [formData, setFormData] = useState<FormDataState>({
         title: '', price: 0, type: 'SALE', category: 'CONDO', 
-        address: '', description: '', 
+        address: '', description: '', interiorDetails: '',
         bedrooms: 1, bathrooms: 1, size: 0,
         floor: 0, yearBuilt: new Date().getFullYear(), parking: 1, landSize: 0,
         furniture: 'PARTLY', nearbyTransport: '',
@@ -206,7 +206,19 @@ export default function AddListingForm() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="col-span-1 md:col-span-4 mt-4">
+                    <label className="block text-sm font-medium mb-1 dark:text-gray-300">รายละเอียดภายในบ้าน/คอนโด (พิมพ์ได้อย่างอิสระ)</label>
+                    <textarea 
+                        name="interiorDetails" 
+                        value={formData.interiorDetails} 
+                        onChange={handleChange} 
+                        rows={4} 
+                        placeholder="เช่น แอร์ 2 ตัว, เฟอร์นิเจอร์บิวท์อิน, เครื่องทำน้ำอุ่น..."
+                        className="w-full p-3 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" 
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <label className="block text-sm font-medium mb-1 flex items-center gap-1 dark:text-gray-300"><Sofa className="w-4 h-4"/> การตกแต่ง</label>
                         <select name="furniture" value={formData.furniture} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600">

@@ -33,9 +33,10 @@ export interface PropertyImage {
     order: number;
 }
 export interface PropertyContact {
-    id: string;
     phoneNumber: string;
     email: string;
+    line?: string;
+    facebook?: string;
 }
 export interface Property {
     id: string;
@@ -52,11 +53,20 @@ export interface Property {
     size: number; 
     bedrooms: number;
     bathrooms: number;
+    interiorDetails?: string;
     contact: PropertyContact;
     images: PropertyImage[];
     features: string[]; 
     createdAt: Date;
     updatedAt: Date;
-    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE';
+    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING';
     viewCount: number;
+    latitude?: number;
+    longitude?: number;
+    pricePerUnit?: number;
+    floors?: number;
+    yearBuilt?: number;
+    downPaymentPercent?: number; 
+    loanTerm?: number;
+    interestRate?: number;
 }

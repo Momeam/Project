@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Property } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar } from 'lucide-react'
+import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar, Sparkles } from 'lucide-react'
 
 interface PropertyDetailProps {
     property: Property
@@ -118,9 +118,20 @@ export function PropertyDetail({
                             <CardTitle>รายละเอียด</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                                 {property.description}
                             </p>
+                            {property.interiorDetails && (
+                                <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+                                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-slate-900 dark:text-white">
+                                        <Sparkles className="w-5 h-5 text-emerald-500" />
+                                        รายละเอียดภายในและตกแต่ง
+                                    </h3>
+                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed italic bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+                                        {property.interiorDetails}
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

@@ -26,6 +26,7 @@ export async function createListing(
     const bedrooms = parseInt(formData.get('bedrooms') as string || '0');
     const bathrooms = parseInt(formData.get('bathrooms') as string || '0');
     const size = parseInt(formData.get('size') as string || '0');
+    const interiorDetails = formData.get('interiorDetails') as string || '';
 
     if (!title || price <= 0) {
         return { success: false, message: "กรุณากรอกชื่อและราคาให้ถูกต้อง" };
@@ -42,7 +43,8 @@ export async function createListing(
         province: 'กรุงเทพฯ', 
         bedrooms: bedrooms,
         bathrooms: bathrooms,
-        size: size
+        size: size,
+        interiorDetails: interiorDetails
     };
 
     try {
