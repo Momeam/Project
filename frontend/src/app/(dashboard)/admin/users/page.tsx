@@ -32,15 +32,18 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         const loadUsers = async () => {
-            await fetchUsers();
+            if (currentUser?.role === 'ADMIN') {
+                await fetchUsers();
+            }
             setIsLoading(false);
         };
         loadUsers();
-    }, [fetchUsers]);
+    }, [fetchUsers, currentUser]);
 
-    const filteredUsers = usersList.filter(user => 
-        user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    const safeUsersList = Array.isArray(usersList) ? usersList : [];
+    const filteredUsers = safeUsersList.filter(user => 
+        (user?.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleRoleChange = async (userId: string | number, newRole: UserRole) => {
@@ -59,6 +62,21 @@ export default function AdminUsersPage() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            </div>
+        );
+    }
+
+    if (currentUser?.role !== 'ADMIN') {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200">
+                    <Shield className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-slate-800">เข้าถึงข้อมูลไม่ได้</h2>
+                    <p className="text-slate-500 mt-2">หน้านี้สำหรับแอดมินเท่านั้น</p>
+                    <Link href="/">
+                        <Button className="mt-6">กลับสู่หน้าหลัก</Button>
+                    </Link>
+                </div>
             </div>
         );
     }

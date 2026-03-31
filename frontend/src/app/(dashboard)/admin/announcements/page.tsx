@@ -16,7 +16,7 @@ interface Announcement {
 }
 
 export default function AdminAnnouncementsPage() {
-  const { currentUser } = useAuthStore();
+  const { currentUser, token } = useAuthStore();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -49,6 +49,8 @@ export default function AdminAnnouncementsPage() {
       await axios.post('http://localhost:5000/api/announcements', {
         ...formData,
         admin_id: currentUser?.id
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('ส่งประกาศสำเร็จ! 🎉');
       setFormData({ title: '', content: '', type: 'PROMOTION' });
@@ -64,6 +66,8 @@ export default function AdminAnnouncementsPage() {
     try {
       await axios.put(`http://localhost:5000/api/announcements/${id}/status`, {
         is_active: !currentStatus
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       fetchAnnouncements();
     } catch (error) {
@@ -74,7 +78,9 @@ export default function AdminAnnouncementsPage() {
   const deleteAnnouncement = async (id: number) => {
     if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/announcements/${id}`);
+      await axios.delete(`http://localhost:5000/api/announcements/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       fetchAnnouncements();
     } catch (error) {
       console.error('Error deleting announcement:', error);

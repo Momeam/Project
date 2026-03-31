@@ -26,7 +26,7 @@ export default function ListingDetailPage() {
     const [apiProperty, setApiProperty] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     
-    // ⭐️ 1. เพิ่ม State เก็บข้อมูลคนขาย
+    // Using data from properties API
     const [sellerInfo, setSellerInfo] = useState<any>(null);
 
     const getPropertyById = usePropertyStore((state) => state.getPropertyById);
@@ -67,26 +67,16 @@ export default function ListingDetailPage() {
 
     const property = storeProperty || apiProperty;
 
-    // ⭐️ 2. เพิ่ม useEffect เพื่อดึงข้อมูลคนขายจาก Database (เทียบด้วย userId)
+    // Data is now joined in the Backend!
     useEffect(() => {
-        const fetchSellerInfo = async () => {
-            // ดักจับชื่อตัวแปรที่ส่งมาจาก Postgres (อาจจะเป็น userId หรือ userid)
-            const ownerId = property?.userId || property?.userid; 
-            if (ownerId) {
-                try {
-                    const res = await fetch('http://localhost:5000/api/users');
-                    if (res.ok) {
-                        const usersList = await res.json();
-                        const matchedSeller = usersList.find((u: any) => String(u.id) === String(ownerId));
-                        setSellerInfo(matchedSeller);
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch seller data");
-                }
-            }
-        };
-
-        if (property) fetchSellerInfo();
+        if (property && property.owner_name) {
+            setSellerInfo({
+                username: property.owner_name,
+                tel: property.owner_tel,
+                email: property.owner_email,
+                line_id: property.owner_line
+            });
+        }
     }, [property]);
 
     useEffect(() => {
@@ -99,9 +89,9 @@ export default function ListingDetailPage() {
     const contactInfo = {
         name: sellerInfo?.username || 'ไม่ระบุชื่อ',
         phone: sellerInfo?.tel || '-',
-        line: '-', // ใน DB เรายังไม่มีฟิลด์ Line 
+        line: sellerInfo?.line_id || '-', 
         email: sellerInfo?.email || '-',
-        image: null // รูปโปรไฟล์เดี๋ยวเราทำระบบอัปโหลดในอนาคตครับ
+        image: null
     };
 
     if (!isMounted) return null;

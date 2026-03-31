@@ -5,7 +5,6 @@ import { persist } from 'zustand/middleware';
 export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type UserRole = 'USER' | 'SELLER' | 'ADMIN';
 
-// โครงสร้าง User ให้ตรงกับสิ่งที่ได้มาจาก Backend
 export interface User {
     id: string | number;
     username: string;
@@ -21,23 +20,21 @@ export interface User {
 interface AuthState {
     isLoggedIn: boolean;
     currentUser: User | null;
+    token: string | null;
     usersList: User[];
-    justUpgraded: boolean; // 👈 เพิ่ม state ใหม่
+    justUpgraded: boolean;
     
-    // Actions ที่หน้าบ้านไว้เรียกใช้ตอนล็อกอินผ่าน/ล็อกเอาท์
-    loginSuccess: (user: User) => void; 
+    loginSuccess: (user: User, token: string) => void; 
     logout: () => void;
     updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
-    setJustUpgraded: (val: boolean) => void; // 👈 เพิ่ม action ใหม่
+    setJustUpgraded: (val: boolean) => void;
     
-    // Actions สำหรับจัดการผู้ใช้ (สำหรับ Admin)
     fetchUsers: () => Promise<void>;
     updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
     deleteUser: (userId: string | number) => Promise<void>;
     approveUserVerification: (userId: string | number) => Promise<void>;
     rejectUserVerification: (userId: string | number) => Promise<void>;
     
-    // Actions สำหรับ Seller OTP
     requestOtp: (tel: string) => Promise<string | null>;
     verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
 }
@@ -45,24 +42,25 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
-            // --- State พื้นฐาน ---
             isLoggedIn: false,
             currentUser: null,
+            token: null,
             usersList: [],
-            justUpgraded: false, // 👈 เริ่มต้นเป็น false
+            justUpgraded: false,
 
-            // --- Actions ---
-            loginSuccess: (user) => {
+            loginSuccess: (user, token) => {
                 set({ 
                     isLoggedIn: true, 
-                    currentUser: user 
+                    currentUser: user,
+                    token
                 });
             },
 
             logout: () => {
                 set({ 
                     isLoggedIn: false, 
-                    currentUser: null 
+                    currentUser: null,
+                    token: null
                 });
             },
 
@@ -72,23 +70,36 @@ export const useAuthStore = create<AuthState>()(
                 }));
             },
 
-            setJustUpgraded: (val) => set({ justUpgraded: val }), // 👈 เพิ่ม action
+            setJustUpgraded: (val) => set({ justUpgraded: val }),
 
             fetchUsers: async () => {
                 try {
-                    const response = await fetch('http://localhost:5000/api/users');
+                    const token = get().token;
+                    const response = await fetch('http://localhost:5000/api/users', {
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    });
                     const data = await response.json();
-                    set({ usersList: data });
+                    if (!response.ok) {
+                        console.warn('Fetch users failed:', data.error);
+                        set({ usersList: [] });
+                        return;
+                    }
+                    set({ usersList: Array.isArray(data) ? data : [] });
                 } catch (error) {
                     console.error('Fetch users error:', error);
+                    set({ usersList: [] }); // prevents crash if unauthorized
                 }
             },
 
             updateUserRole: async (userId, role) => {
                 try {
+                    const token = get().token;
                     const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
                         body: JSON.stringify({ role })
                     });
                     if (response.ok) {
@@ -104,8 +115,10 @@ export const useAuthStore = create<AuthState>()(
 
             deleteUser: async (userId) => {
                 try {
+                    const token = get().token;
                     const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                     });
                     if (response.ok) {
                         set((state) => ({
@@ -118,7 +131,6 @@ export const useAuthStore = create<AuthState>()(
             },
 
             approveUserVerification: async (userId) => {
-                // สำหรับตอนนี้เราจะใช้ role SELLER แทนการอนุมัติ
                 await get().updateUserRole(userId, 'SELLER');
                 set((state) => ({
                     usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'APPROVED' } : u)
@@ -133,14 +145,18 @@ export const useAuthStore = create<AuthState>()(
 
             requestOtp: async (tel) => {
                 try {
+                    const token = get().token;
                     const response = await fetch('http://localhost:5000/api/users/request-otp', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
                         body: JSON.stringify({ tel })
                     });
                     const data = await response.json();
                     if (response.ok) {
-                        return data.otp; // ส่ง OTP กลับไปเพื่อจำลองการรับ OTP
+                        return data.otp; 
                     }
                     return null;
                 } catch (error) {
@@ -151,19 +167,22 @@ export const useAuthStore = create<AuthState>()(
 
             verifyOtp: async (tel, otp, sellerData) => {
                 try {
+                    const token = get().token;
                     const response = await fetch('http://localhost:5000/api/users/verify-otp', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
                         body: JSON.stringify({ tel, otp, ...sellerData })
                     });
                     const data = await response.json();
                     if (response.ok) {
-                        // อัปเดต currentUser ใน store ทันทีถ้าเป็นผู้ใช้ที่ล็อกอินอยู่
                         const currentUser = get().currentUser;
                         if (currentUser && currentUser.id === data.user.id) {
                             set({ 
                                 currentUser: { ...currentUser, ...data.user },
-                                justUpgraded: true // 👈 ตั้งค่าเป็น true ทันทีหลังสำเร็จ
+                                justUpgraded: true
                             });
                         }
                         return { success: true };

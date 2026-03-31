@@ -35,7 +35,7 @@ export default function LoginPage() {
             if (response.ok) {
                 setSuccessMsg('เข้าสู่ระบบสำเร็จ! กำลังพาท่านไป...');
                 
-                loginSuccess(data.user);
+                loginSuccess(data.user, data.token);
 
                 const userRole = data.user.role; 
 
