@@ -37,6 +37,8 @@ interface AuthState {
     
     requestOtp: (tel: string) => Promise<string | null>;
     verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
+    updateProfile: (profileData: { username?: string; tel?: string; line_id?: string }) => Promise<{ success: boolean; error?: string }>;
+    changePassword: (passwordData: { oldPassword: string; newPassword: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -191,6 +193,53 @@ export const useAuthStore = create<AuthState>()(
                 } catch (error) {
                     console.error('Verify OTP error:', error);
                     return { success: false, error: 'ไม่สามารถเชื่อมต่อ Backend ได้ กรุณาตรวจสอบว่า Server เปิดอยู่' };
+                }
+            },
+
+            updateProfile: async (profileData) => {
+                try {
+                    const token = get().token;
+                    const response = await fetch('http://localhost:5000/api/users/me', {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify(profileData)
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        set((state) => ({
+                            currentUser: state.currentUser ? { ...state.currentUser, ...data.user } : null
+                        }));
+                        return { success: true };
+                    }
+                    return { success: false, error: data.error || 'ไม่สามารถอัปเดตข้อมูลได้' };
+                } catch (error) {
+                    console.error('Update profile error:', error);
+                    return { success: false, error: 'ไม่สามารถเชื่อมต่อ Backend ได้' };
+                }
+            },
+
+            changePassword: async (passwordData) => {
+                try {
+                    const token = get().token;
+                    const response = await fetch('http://localhost:5000/api/users/change-password', {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify(passwordData)
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        return { success: true };
+                    }
+                    return { success: false, error: data.error || 'ไม่สามารถเปลี่ยนรหัสผ่านได้' };
+                } catch (error) {
+                    console.error('Change password error:', error);
+                    return { success: false, error: 'ไม่สามารถเชื่อมต่อ Backend ได้' };
                 }
             },
         }),

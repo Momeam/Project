@@ -118,7 +118,7 @@ export default function Navbar() {
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-slate-50 dark:focus:bg-slate-800 p-3">
-                                            <Link href="/user/settings" className="flex items-center gap-3 w-full">
+                                            <Link href="/user/profile" className="flex items-center gap-3 w-full">
                                                 <Settings className="w-4 h-4 text-slate-500" />
                                                 <span>ตั้งค่าบัญชี</span>
                                             </Link>

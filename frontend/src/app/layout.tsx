@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: 'เว็บไซต์รวมประกาศซื้อ-ขาย-เช่า อสังหาริมทรัพย์',
 }
 
+import ThemeProvider from '@/components/ThemeProvider'
+
 export default function RootLayout({
   children,
 }: {
@@ -19,15 +21,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
-        
-        {/* ⭐️ 2. ใส่ Navbar ไว้ตรงนี้ (เหนือ main) */}
-        <Navbar />
-        
-        <main className="min-h-screen">
-          {children} 
-        </main>
-        
+      <body className={inter.className}>
+        <ThemeProvider>
+          {/* ⭐️ 2. ใส่ Navbar ไว้ตรงนี้ (เหนือ main) */}
+          <Navbar />
+          
+          <main className="min-h-screen">
+            {children} 
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -126,7 +126,7 @@ router.put('/:id/role', verifyToken, verifyRole(['ADMIN']), async (req, res) => 
     try {
         const { id } = req.params;
         const { role } = req.body;
-        if (!['USER', 'SELLER', 'ADMIN'].includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
+        if (!['USER', 'SELLER'].includes(role)) return res.status(400).json({ error: 'ไม่สามารถตั้งค่าสิทธิ์เป็น ADMIN ผ่านระบบนี้ได้' });
 
         const result = await pool.query('UPDATE Users SET role = $1 WHERE id = $2 RETURNING id, username, email, role', [role, id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบผู้ใช้งานนี้' });
