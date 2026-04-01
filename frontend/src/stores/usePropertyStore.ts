@@ -34,7 +34,7 @@ export interface Property {
     features: string[];
     createdAt: string; 
     updatedAt: string; 
-    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING';
+    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING' | 'SOLD' | 'BOOKED';
     viewCount: number; 
     latitude?: number; 
     longitude?: number;
@@ -52,10 +52,10 @@ interface PropertyState {
 
     fetchProperties: () => Promise<void>;
     getPropertyById: (id: string) => Property | undefined;
-    toggleFavorite: (id: string) => void;
     addProperty: (property: Property) => void;
     updatePropertyStatus: (id: string, status: Property['status']) => void;
     deleteProperty: (id: string, userId: string, role: string) => void;
+    incrementViewCount: (id: string) => Promise<void>;
     
     comparisonList: string[];
     addToCompare: (id: string) => void;
@@ -98,12 +98,6 @@ export const usePropertyStore = create<PropertyState>()(
 
             getPropertyById: (id) => get().properties.find((p) => p.id === id),
 
-            toggleFavorite: (id) => set((state) => ({
-                properties: state.properties.map((p) => 
-                    p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-                )
-            })),
-
             addProperty: (newProperty) => set((state) => ({ 
                 properties: [newProperty, ...state.properties] 
             })),
@@ -132,6 +126,20 @@ export const usePropertyStore = create<PropertyState>()(
                     }
                 } else {
                     alert('คุณไม่มีสิทธิ์ลบรายการนี้');
+                }
+            },
+
+            incrementViewCount: async (id) => {
+                try {
+                    const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+                    await fetch(`http://${currentIP}:5000/api/properties/${id}/view`, { method: 'PATCH' });
+                    set((state) => ({
+                        properties: state.properties.map((p) =>
+                            p.id === id ? { ...p, viewCount: (p.viewCount || 0) + 1 } : p
+                        ),
+                    }));
+                } catch (err) {
+                    console.error("Failed to increment view count", err);
                 }
             },
 

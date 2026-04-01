@@ -59,7 +59,7 @@ export interface Property {
     features: string[]; 
     createdAt: Date;
     updatedAt: Date;
-    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING';
+    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING' | 'SOLD' | 'BOOKED';
     viewCount: number;
     latitude?: number;
     longitude?: number;

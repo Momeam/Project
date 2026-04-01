@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles } from 'lucide-react';
+import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles, Eye } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
+
+import { useFavoriteStore } from '@/stores/useFavoriteStore';
 
 export default function ListingDetailPage() {
     const params = useParams();
@@ -25,16 +27,24 @@ export default function ListingDetailPage() {
     
     const [apiProperty, setApiProperty] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [inquiryMessage, setInquiryMessage] = useState('');
+    const [isSendingInquiry, setIsSendingInquiry] = useState(false);
     
     // Using data from properties API
     const [sellerInfo, setSellerInfo] = useState<any>(null);
 
     const getPropertyById = usePropertyStore((state) => state.getPropertyById);
-    const toggleFavorite = usePropertyStore((state) => state.toggleFavorite);
+    const { favoriteIds, toggleFavorite } = useFavoriteStore();
+    const incrementViewCount = usePropertyStore((state) => state.incrementViewCount);
     
     const storeProperty = getPropertyById(id);
 
-    useEffect(() => { setIsMounted(true); }, []);
+    useEffect(() => { 
+        setIsMounted(true); 
+        if (id) {
+            incrementViewCount(id);
+        }
+    }, [id, incrementViewCount]);
 
     // ดึงข้อมูลบ้าน
     useEffect(() => {
@@ -66,6 +76,25 @@ export default function ListingDetailPage() {
     }, [id, storeProperty]);
 
     const property = storeProperty || apiProperty;
+
+    const handleSendInquiry = async () => {
+        if (!inquiryMessage.trim()) {
+            alert('กรุณากรอกข้อความสอบถาม');
+            return;
+        }
+
+        setIsSendingInquiry(true);
+        const { sendInquiry } = await import('@/actions/listings');
+        const result = await sendInquiry(id, property.userId, inquiryMessage);
+        setIsSendingInquiry(false);
+
+        if (result.success) {
+            alert(result.message);
+            setInquiryMessage('');
+        } else {
+            alert(result.message);
+        }
+    };
 
     // Data is now joined in the Backend!
     useEffect(() => {
@@ -128,10 +157,10 @@ export default function ListingDetailPage() {
                         <Button 
                             variant="outline" 
                             size="icon" 
-                            className={`rounded-full transition-all ${property.isFavorite ? 'bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100' : 'hover:bg-slate-100'}`}
+                            className={`rounded-full transition-all ${favoriteIds.has(property.id) ? 'bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100' : 'hover:bg-slate-100'}`}
                             onClick={() => toggleFavorite(property.id)}
                         >
-                            <Heart className={`w-4 h-4 ${property.isFavorite ? 'fill-rose-500' : ''}`} />
+                            <Heart className={`w-4 h-4 ${favoriteIds.has(property.id) ? 'fill-rose-500' : ''}`} />
                         </Button>
                     </div>
                 </div>
@@ -165,9 +194,15 @@ export default function ListingDetailPage() {
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                 <div>
                                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">{property.title}</h1>
-                                    <div className="flex items-center text-slate-500 text-sm">
-                                        <MapPin className="w-4 h-4 mr-2 text-emerald-500" />
-                                        {property.address} {property.province}
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-slate-500 dark:text-slate-400 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 text-emerald-500" />
+                                            <span>{property.address} {property.province}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Eye className="w-4 h-4 text-blue-500" />
+                                            <span>{property.viewCount || 0} ผู้เข้าชม</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -254,28 +289,47 @@ export default function ListingDetailPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <a href={`tel:${contactInfo.phone}`} className="flex items-center p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer">
-                                        <Phone className="w-5 h-5 mr-3" />
-                                        <span className="font-medium">{contactInfo.phone}</span>
-                                    </a>
-                                    <div className="flex items-center p-3 rounded-xl bg-slate-50 text-slate-700">
-                                        <MessageSquare className="w-5 h-5 mr-3 text-green-500" />
-                                        <span>{contactInfo.line}</span>
-                                    </div>
-                                    <div className="flex items-center p-3 rounded-xl bg-slate-50 text-slate-700">
-                                        <Mail className="w-5 h-5 mr-3 text-blue-500" />
-                                        <span className="truncate">{contactInfo.email}</span>
-                                    </div>
+                                    <Button 
+                                        onClick={() => toggleFavorite(property.id)}
+                                        variant="outline" 
+                                        className="w-full h-14 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Heart className={`w-5 h-5 transition-colors ${favoriteIds.has(property.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                        {favoriteIds.has(property.id) ? 'บันทึกแล้ว' : 'บันทึกรายการโปรด'}
+                                    </Button>
+                                    <Button asChild className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                        <a href={`tel:${contactInfo.phone}`}>
+                                            <Phone className="w-5 h-5 mr-2" /> โทรหาเจ้าของ
+                                        </a>
+                                    </Button>
                                 </div>
 
-                                <Button 
-                                    onClick={() => {
-                                        alert(`📞 เบอร์ติดต่อ: ${contactInfo.phone}\n💬 Line ID: ${contactInfo.line}\n✉️ อีเมล: ${contactInfo.email}`);
-                                    }}
-                                    className="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white h-12 rounded-xl shadow-lg shadow-slate-900/20 text-base font-medium"
-                                >
-                                    ติดต่อสอบถาม
-                                </Button>
+                                {/* Inquiry Form */}
+                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                        <MessageSquare className="w-5 h-5 text-emerald-500" />
+                                        ส่งข้อความสอบถาม
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <textarea 
+                                            placeholder="เช่น สนใจทรัพย์นี้ครับ นัดดูได้วันไหนบ้างครับ?" 
+                                            value={inquiryMessage}
+                                            onChange={(e) => setInquiryMessage(e.target.value)}
+                                            className="w-full min-h-[120px] p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none transition-all resize-none text-sm"
+                                        />
+                                        <Button 
+                                            onClick={handleSendInquiry}
+                                            disabled={isSendingInquiry}
+                                            className="w-full h-12 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl font-bold transition-all hover:bg-black dark:hover:bg-slate-100 disabled:opacity-50"
+                                        >
+                                            {isSendingInquiry ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                'ส่งข้อความ'
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

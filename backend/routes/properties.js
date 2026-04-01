@@ -96,8 +96,8 @@ router.put('/:id', verifyToken, verifyRole(['SELLER', 'ADMIN']), async (req, res
             return res.status(403).json({ error: 'คุณไม่ใช่เจ้าของประกาศนี้' });
         }
 
-        const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5 WHERE id=$6 RETURNING *`;
-        const result = await pool.query(queryText, [p.title, p.price, p.description, p.address, p.interiorDetails || '', id]);
+        const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5, status=$6 WHERE id=$7 RETURNING *`;
+        const result = await pool.query(queryText, [p.title, p.price, p.description, p.address, p.interiorDetails || '', p.status || 'ACTIVE', id]);
         
         res.status(200).json({ message: 'แก้ไขสำเร็จ!', property: result.rows[0] });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -116,6 +116,16 @@ router.delete('/:id', verifyToken, verifyRole(['SELLER', 'ADMIN']), async (req, 
 
         await pool.query('DELETE FROM Properties WHERE id = $1', [id]);
         res.status(200).json({ message: 'ลบสำเร็จ! 🗑️' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [PATCH] เพิ่มจำนวนผู้เข้าชม
+router.patch('/:id/view', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('UPDATE Properties SET "viewCount" = "viewCount" + 1 WHERE id = $1 RETURNING "viewCount"', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบประกาศ' });
+        res.status(200).json({ viewCount: result.rows[0].viewCount });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

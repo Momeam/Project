@@ -11,13 +11,15 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   
-  let allowedRoles: UserRole[] = [];
+  let allowedRoles: UserRole[] = ['USER', 'SELLER', 'ADMIN']; // ค่าเริ่มต้นให้เข้าได้ทุกคนที่ล็อกอิน
   if (pathname.startsWith('/admin')) {
     allowedRoles = ['ADMIN'];
   } else if (pathname.startsWith('/user/profile')) {
-    allowedRoles = ['USER', 'SELLER', 'ADMIN']; // (Req 5)
+    allowedRoles = ['USER', 'SELLER', 'ADMIN'];
   } else if (pathname.startsWith('/user')) {
     allowedRoles = ['USER', 'SELLER'];
+  } else if (pathname.startsWith('/create-property') || pathname.startsWith('/edit-property')) {
+    allowedRoles = ['SELLER', 'ADMIN'];
   }
 
     return (

@@ -1,11 +1,14 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import { Property } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar, Sparkles } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar, Sparkles, Heart, MessageCircle, Send } from 'lucide-react'
+import { sendInquiry } from '@/actions/listings'
+import { usePropertyStore } from '@/stores/usePropertyStore'
 
 interface PropertyDetailProps {
     property: Property
@@ -23,11 +26,40 @@ export function PropertyDetail({
     onContact,
 }: PropertyDetailProps) {
     const pricePerSqm = property.size > 0 ? property.price / property.size : 0
+    const [inquiryMessage, setInquiryMessage] = useState('')
+    const [isSending, setIsSending] = useState(false)
+    const toggleFavorite = usePropertyStore((state) => state.toggleFavorite)
+
+    const handleSendInquiry = async () => {
+        if (!inquiryMessage.trim()) {
+            alert('กรุณากรอกข้อความสอบถาม')
+            return
+        }
+
+        setIsSending(true)
+        const result = await sendInquiry(property.id, property.userId, inquiryMessage)
+        setIsSending(false)
+
+        if (result.success) {
+            alert(result.message)
+            setInquiryMessage('')
+        } else {
+            alert(result.message)
+        }
+    }
 
     return (
         <div className="w-full max-w-5xl mx-auto py-8 px-4 space-y-6">
             {/* ========== ส่วนภาพและชื่อ ========== */}
-            <Card className="overflow-hidden dark:bg-gray-800">
+            <Card className="overflow-hidden dark:bg-gray-800 relative">
+                {/* ปุ่ม Favorite */}
+                <button 
+                    onClick={() => toggleFavorite(property.id)}
+                    className="absolute top-4 right-4 z-20 bg-white/80 dark:bg-black/40 backdrop-blur-md p-3 rounded-full shadow-lg hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700"
+                >
+                    <Heart className={`w-6 h-6 ${property.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                </button>
+
                 <div className="space-y-4">
                     {/* ภาพหลัก */}
                     {property.images.length > 0 && (
@@ -52,11 +84,17 @@ export function PropertyDetail({
                                     <span>{property.address}, {property.district}, {property.province}</span>
                                 </div>
                                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                                    property.type === 'SALE'
+                                    property.status === 'SOLD'
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                        : property.status === 'BOOKED'
+                                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                        : property.type === 'SALE'
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                         : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                                 }`}>
-                                    {property.type === 'SALE' ? '🏷️ ขาย' : '🔑 เช่า'}
+                                    {property.status === 'SOLD' ? '🤝 ซื้อขายแล้ว' : 
+                                     property.status === 'BOOKED' ? '📅 จองแล้ว' : 
+                                     property.type === 'SALE' ? '🏷️ ขาย' : '🔑 เช่า'}
                                 </span>
                             </div>
 
@@ -255,9 +293,51 @@ export function PropertyDetail({
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* ========== ฟอร์มติดต่อสอบถาม ========== */}
+                    {!isOwner && (
+                        <Card className="dark:bg-gray-800 border-blue-100 dark:border-blue-900 shadow-sm overflow-hidden">
+                            <CardHeader className="bg-blue-50/50 dark:bg-blue-950/20 border-b border-blue-50 dark:border-blue-900/50">
+                                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                    <MessageCircle className="w-5 h-5" />
+                                    สอบถามข้อมูลเพิ่มเติมเกี่ยวกับทรัพย์นี้
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <div className="space-y-4">
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        ส่งข้อความหาเจ้าของทรัพย์โดยตรง เพื่อสอบถามรายละเอียด หรือนัดหมายเข้าชม
+                                    </p>
+                                    <Textarea
+                                        placeholder="เช่น สนใจทรัพย์นี้ครับ นัดดูที่จริงได้วันไหนบ้างครับ?"
+                                        value={inquiryMessage}
+                                        onChange={(e) => setInquiryMessage(e.target.value)}
+                                        className="min-h-[120px] focus:ring-blue-500/20 border-gray-200 dark:border-gray-700"
+                                    />
+                                    <Button 
+                                        onClick={handleSendInquiry} 
+                                        disabled={isSending}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all py-6 rounded-xl"
+                                    >
+                                        {isSending ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                กำลังส่ง...
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-lg font-bold">
+                                                <Send className="w-5 h-5" />
+                                                ส่งข้อความสอบถาม
+                                            </div>
+                                        )}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
-                {/* ========== ส่วนขวา: ข้อมูลติดต่อ ========== */}
+                {/* ========== ส่วนขวา: ข้อมูลเจ้าของ ========== */}
                 <div className="space-y-6">
                     <Card className="dark:bg-gray-800 sticky top-4">
                         <CardHeader>

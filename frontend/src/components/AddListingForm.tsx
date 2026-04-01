@@ -7,7 +7,8 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { Home, MapPin, FileText, Key, Car, Sofa, Calendar, AlignLeft } from 'lucide-react';
+import { Home, MapPin, FileText, Key, Car, Sofa, Calendar, AlignLeft, CheckCircle } from 'lucide-react';
+import { Property } from '@/lib/types';
 
 // Type สำหรับ State ในฟอร์ม
 type FormDataState = {
@@ -19,21 +20,27 @@ type FormDataState = {
     furniture: 'NONE' | 'PARTLY' | 'FULLY';
     nearbyTransport: string;
     deposit: number; minContract: number;
+    status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING' | 'SOLD' | 'BOOKED';
     
     images: File[]; latitude?: number; longitude?: number;
     commonFacilities: { pool: boolean; fitness: boolean; parking: boolean; };
 };
 
-function SubmitButton() {
+function SubmitButton({ isEdit }: { isEdit: boolean }) {
     const { pending } = useFormStatus();
     return (
         <button type="submit" disabled={pending} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 transition-all">
-            {pending ? 'กำลังบันทึกข้อมูลลงฐานข้อมูล...' : 'ลงประกาศทันที'}
+            {pending ? 'กำลังบันทึกข้อมูลลงฐานข้อมูล...' : (isEdit ? 'บันทึกการแก้ไข' : 'ลงประกาศทันที')}
         </button>
     );
 }
 
-export default function AddListingForm() {
+interface AddListingFormProps {
+    property?: Property;
+    isEdit?: boolean;
+}
+
+export default function AddListingForm({ property, isEdit = false }: AddListingFormProps) {
     const formRef = useRef<HTMLFormElement>(null);
     
     // ⭐️ ดึงฟังก์ชันมาจาก Zustand Store
@@ -44,14 +51,29 @@ export default function AddListingForm() {
     const userId = currentUser?.id;
 
     const [formData, setFormData] = useState<FormDataState>({
-        title: '', price: 0, type: 'SALE', category: 'CONDO', 
-        address: '', description: '', interiorDetails: '',
-        bedrooms: 1, bathrooms: 1, size: 0,
-        floor: 0, yearBuilt: new Date().getFullYear(), parking: 1, landSize: 0,
-        furniture: 'PARTLY', nearbyTransport: '',
-        deposit: 2, minContract: 12,
+        title: property?.title || '', 
+        price: property?.price || 0, 
+        type: property?.type || 'SALE', 
+        category: property?.category || 'CONDO', 
+        address: property?.address || '', 
+        description: property?.description || '', 
+        interiorDetails: property?.interiorDetails || '',
+        bedrooms: property?.bedrooms || 1, 
+        bathrooms: property?.bathrooms || 1, 
+        size: property?.size || 0,
+        floor: property?.floors || 0, 
+        yearBuilt: property?.yearBuilt || new Date().getFullYear(), 
+        parking: property?.parking || 1, 
+        landSize: property?.landSize || 0,
+        furniture: property?.furniture || 'PARTLY', 
+        nearbyTransport: property?.nearbyTransport || '',
+        deposit: property?.deposit || 2, 
+        minContract: property?.minContract || 12,
+        status: property?.status || 'ACTIVE',
         
-        images: [], latitude: undefined, longitude: undefined,
+        images: [], 
+        latitude: property?.latitude, 
+        longitude: property?.longitude,
         commonFacilities: { pool: false, fitness: false, parking: false },
     });
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -109,10 +131,11 @@ export default function AddListingForm() {
     return (
         <form ref={formRef} action={formAction} className="space-y-8 p-6 bg-white dark:bg-gray-800 shadow-lg rounded-xl max-w-4xl mx-auto text-black">
             <input type="hidden" name="userId" value={userId || ''} />
+            {isEdit && property && <input type="hidden" name="id" value={property.id} />}
             
             <div className="border-b pb-4">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">ลงประกาศอสังหาริมทรัพย์</h2>
-                <p className="text-gray-500 mt-1">กรอกข้อมูลให้ครบถ้วนเพื่อดึงดูดความสนใจของผู้ซื้อ</p>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{isEdit ? 'แก้ไขประกาศ' : 'ลงประกาศอสังหาริมทรัพย์'}</h2>
+                <p className="text-gray-500 mt-1">{isEdit ? 'แก้ไขข้อมูลประกาศของคุณให้เป็นปัจจุบัน' : 'กรอกข้อมูลให้ครบถ้วนเพื่อดึงดูดความสนใจของผู้ซื้อ'}</p>
             </div>
 
             {/* กลุ่มที่ 1: ข้อมูลหลัก */}
@@ -160,6 +183,18 @@ export default function AddListingForm() {
                             <option value="LAND">ที่ดิน</option>
                         </select>
                     </div>
+
+                    {isEdit && (
+                        <div>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">สถานะประกาศ</label>
+                            <select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                                <option value="ACTIVE">กำลังประกาศ (Active)</option>
+                                <option value="SOLD">ซื้อขายแล้ว (Sold)</option>
+                                <option value="BOOKED">จองแล้ว (Booked)</option>
+                                <option value="INACTIVE">ปิดประกาศ (Inactive)</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -296,7 +331,7 @@ export default function AddListingForm() {
                 </div>
             )}
             
-            <SubmitButton />
+            <SubmitButton isEdit={isEdit} />
         </form>
     );
 }

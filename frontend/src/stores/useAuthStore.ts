@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useFavoriteStore } from './useFavoriteStore';
 
 // --- Types ---
 export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -51,19 +52,25 @@ export const useAuthStore = create<AuthState>()(
             justUpgraded: false,
 
             loginSuccess: (user, token) => {
+                localStorage.setItem('token', token); // 👈 เพิ่มการบันทึก Token
                 set({ 
                     isLoggedIn: true, 
                     currentUser: user,
                     token
                 });
+                // Fetch favorites after successful login
+                useFavoriteStore.getState().fetchFavorites();
             },
 
             logout: () => {
+                localStorage.removeItem('token'); // 👈 เพิ่มการลบ Token
                 set({ 
                     isLoggedIn: false, 
                     currentUser: null,
                     token: null
                 });
+                // Clear favorites on logout
+                useFavoriteStore.getState().clearFavorites();
             },
 
             updateProfileDisplay: (updates) => {

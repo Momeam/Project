@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { Card, CardContent } from "@/components/ui/card"; 
 import { MapPin, Bed, Bath, Ruler, Search, Heart, Sparkles, TrendingUp } from 'lucide-react';
-import AdBanner from '@/components/AdBanner';
+
+import { useFavoriteStore } from '@/stores/useFavoriteStore';
 
 export default function HomePage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -14,7 +15,8 @@ export default function HomePage() {
     const [maxPrice, setMaxPrice] = useState('');
     const [minBed, setMinBed] = useState(0);
 
-    const { properties, fetchProperties, isLoading, toggleFavorite } = usePropertyStore();
+    const { properties, fetchProperties, isLoading } = usePropertyStore();
+    const { favoriteIds, toggleFavorite } = useFavoriteStore();
 
     useEffect(() => {
         fetchProperties(); 
@@ -24,7 +26,7 @@ export default function HomePage() {
         if (!properties || properties.length === 0) return []; 
 
         const result = properties.filter((p) => {
-            const isActive = p.status === 'ACTIVE';
+            const isVisible = ['ACTIVE', 'SOLD', 'BOOKED'].includes(p.status);
             const isTypeMatch = filterType === 'ALL' || p.type === filterType;
             const query = searchQuery.toLowerCase();
             const matchesSearch = 
@@ -39,11 +41,11 @@ export default function HomePage() {
 
             const isBedMatch = minBed === 0 || p.bedrooms >= minBed;
 
-            return isActive && isTypeMatch && matchesSearch && isPriceMatch && isBedMatch;
+            return isVisible && isTypeMatch && matchesSearch && isPriceMatch && isBedMatch;
         });
 
-        return result.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
-    }, [properties, searchQuery, filterType, minPrice, maxPrice, minBed]);
+        return result.sort((a, b) => (favoriteIds.has(b.id) ? 1 : 0) - (favoriteIds.has(a.id) ? 1 : 0));
+    }, [properties, searchQuery, filterType, minPrice, maxPrice, minBed, favoriteIds]);
 
 
     return (
@@ -110,8 +112,6 @@ export default function HomePage() {
                 </div>
             </div>
 
-            <AdBanner position="TOP_BANNER" />
-
             {/* 🌟 Content Section 🌟 */}
             <div className="container mx-auto px-4 py-20 max-w-[1400px]">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
@@ -130,11 +130,21 @@ export default function HomePage() {
                 </div>
                 
                 {isLoading && properties.length === 0 ? (
-                    <div className="flex justify-center items-center py-40">
-                        <div className="relative w-20 h-20">
-                            <div className="absolute inset-0 border-4 border-slate-200 dark:border-slate-800 rounded-full"></div>
-                            <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="h-[450px] rounded-[2rem] bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700">
+                                <div className="aspect-[4/3] bg-slate-200 dark:bg-slate-700 rounded-t-[2rem]"></div>
+                                <div className="p-6 space-y-4">
+                                    <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                                    <div className="flex gap-2 pt-4">
+                                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg flex-1"></div>
+                                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg flex-1"></div>
+                                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg flex-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -150,7 +160,7 @@ export default function HomePage() {
                                             }}
                                             className="absolute top-4 right-4 z-20 bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 p-2.5 rounded-full shadow-lg hover:bg-white/40 dark:hover:bg-black/40 hover:scale-110 transition-all duration-300"
                                         >
-                                            <Heart className={`w-5 h-5 transition-colors ${property.isFavorite ? "fill-rose-500 text-rose-500" : "text-white"}`} />
+                                            <Heart className={`w-5 h-5 transition-colors ${favoriteIds.has(property.id) ? "fill-rose-500 text-rose-500" : "text-white"}`} />
                                         </button>
 
                                         <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
@@ -158,8 +168,14 @@ export default function HomePage() {
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
                                             
                                             <div className="absolute top-4 left-4">
-                                                <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider text-white shadow-xl border border-white/20 backdrop-blur-sm ${property.type === 'SALE' ? 'bg-emerald-500/90' : 'bg-cyan-500/90'}`}>
-                                                    {property.type === 'SALE' ? 'ขาย' : 'เช่า'}
+                                                <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider text-white shadow-xl border border-white/20 backdrop-blur-sm ${
+                                                    property.status === 'SOLD' ? 'bg-rose-500/90' :
+                                                    property.status === 'BOOKED' ? 'bg-orange-500/90' :
+                                                    property.type === 'SALE' ? 'bg-emerald-500/90' : 'bg-cyan-500/90'
+                                                }`}>
+                                                    {property.status === 'SOLD' ? '🤝 ซื้อขายแล้ว' : 
+                                                     property.status === 'BOOKED' ? '📅 จองแล้ว' : 
+                                                     property.type === 'SALE' ? 'ขาย' : 'เช่า'}
                                                 </span>
                                             </div>
                                             

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Building2, LayoutDashboard, Settings, UserPlus, ChevronDown } from 'lucide-react';
 import {
@@ -26,9 +27,13 @@ export default function Navbar() {
     const currentUser = useAuthStore((state) => state.currentUser);
     const role = currentUser?.role;
     const logout = useAuthStore((state) => state.logout);
+    const fetchFavorites = useFavoriteStore((state) => state.fetchFavorites);
 
     useEffect(() => {
         setIsMounted(true);
+        if (isLoggedIn) {
+            fetchFavorites();
+        }
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
@@ -78,6 +83,11 @@ export default function Navbar() {
                     <Link href="/buy" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname === '/buy' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>ซื้อ</Link>
                     <Link href="/rent" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname === '/rent' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>เช่า</Link>
                     <Link href="/sellers" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname.startsWith('/sellers') ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>ค้นหาผู้ขาย</Link>
+                    {isLoggedIn && (
+                        <Link href="/my-properties" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname === '/my-properties' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>
+                            {role === 'SELLER' ? 'ประกาศของฉัน' : 'รายการโปรด'}
+                        </Link>
+                    )}
                 </div>
 
                 {/* เมนูขวา */}

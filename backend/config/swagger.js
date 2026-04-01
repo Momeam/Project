@@ -47,7 +47,17 @@ const swaggerDocument = {
                     bedrooms: { type: 'integer', example: 2 },
                     bathrooms: { type: 'integer', example: 1 },
                     size: { type: 'number', example: 45 },
-                    interiorDetails: { type: 'string', example: 'พื้นปาร์เก้, แอร์ 3 เครื่อง, เตาไฟฟ้า' }
+                    interiorDetails: { type: 'string', example: 'พื้นปาร์เก้, แอร์ 3 เครื่อง, เตาไฟฟ้า' },
+                    status: { type: 'string', enum: ['ACTIVE', 'SOLD', 'BOOKED', 'INACTIVE'], example: 'ACTIVE' }
+                }
+            },
+            InquiryRequest: {
+                type: 'object',
+                required: ['receiver_id', 'property_id', 'message'],
+                properties: {
+                    receiver_id: { type: 'string', example: 'seller_id_here' },
+                    property_id: { type: 'string', example: 'property_id_here' },
+                    message: { type: 'string', example: 'สนใจทรัพย์นี้ครับ ลดราคาได้อีกไหม?' }
                 }
             }
         }
@@ -58,7 +68,8 @@ const swaggerDocument = {
         '/api/users/login': { 
             post: { 
                 tags: ['Users'], 
-                summary: 'เข้าสู่ระบบ',
+                summary: 'เข้าสู่ระบบ (Login)',
+                description: 'ใช้สำหรับส่งอีเมลและรหัสผ่านเพื่อรับ Token เข้าถึงระบบ',
                 requestBody: {
                     required: true,
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginRequest' } } }
@@ -69,7 +80,8 @@ const swaggerDocument = {
         '/api/users/register': { 
             post: { 
                 tags: ['Users'], 
-                summary: 'สมัครสมาชิก',
+                summary: 'สมัครสมาชิก (Register)',
+                description: 'ใช้สำหรับสร้างบัญชีผู้ใช้ใหม่ในระบบ',
                 requestBody: {
                     required: true,
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/RegisterRequest' } } }
@@ -78,10 +90,16 @@ const swaggerDocument = {
             } 
         },
         '/api/users/me': { 
-            get: { tags: ['Users'], summary: 'ดึงข้อมูลโปรไฟล์ส่วนตัว', security: [{ bearerAuth: [] }] },
+            get: { 
+                tags: ['Users'], 
+                summary: 'ดึงข้อมูลโปรไฟล์ส่วนตัว', 
+                description: 'ใช้ Token ในการยืนยันตัวตนเพื่อดึงข้อมูลส่วนตัวของผู้ใช้ที่เข้าสู่ระบบอยู่',
+                security: [{ bearerAuth: [] }] 
+            },
             put: { 
                 tags: ['Users'], 
                 summary: 'แก้ไขข้อมูลโปรไฟล์ส่วนตัว', 
+                description: 'ใช้สำหรับอัปเดตข้อมูลผู้ใช้ เช่น ชื่อผู้ใช้ หรือเบอร์โทรศัพท์',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     content: { 'application/json': { schema: { type: 'object', properties: { username: { type: 'string' }, tel: { type: 'string' } } } } }
@@ -91,12 +109,18 @@ const swaggerDocument = {
 
         // --- Admin (User Management) ---
         '/api/users': { 
-            get: { tags: ['Admin (User Management)'], summary: 'ดึงรายชื่อผู้ใช้ทั้งหมด (Admin Only)', security: [{ bearerAuth: [] }] } 
+            get: { 
+                tags: ['Admin (User Management)'], 
+                summary: 'ดึงรายชื่อผู้ใช้ทั้งหมด', 
+                description: 'ดึงรายชื่อผู้ใช้ทุกคนในระบบ (เฉพาะ Admin เท่านั้น)',
+                security: [{ bearerAuth: [] }] 
+            } 
         },
         '/api/users/{id}/role': { 
             put: { 
                 tags: ['Admin (User Management)'], 
-                summary: 'เปลี่ยนบทบาทผู้ใช้', 
+                summary: 'เปลี่ยนบทบาทผู้ใช้ (Role)', 
+                description: 'เปลี่ยนบทบาทของผู้ใช้ (USER, SELLER, ADMIN) โดยใช้ ID',
                 security: [{ bearerAuth: [] }],
                 parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
                 requestBody: {
@@ -108,6 +132,7 @@ const swaggerDocument = {
             delete: { 
                 tags: ['Admin (User Management)'], 
                 summary: 'ลบผู้ใช้ออกจากระบบ', 
+                description: 'ลบข้อมูลผู้ใช้ถาวรออกจากฐานข้อมูล',
                 security: [{ bearerAuth: [] }],
                 parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }]
             } 
@@ -115,10 +140,15 @@ const swaggerDocument = {
         
         // --- Properties ---
         '/api/properties': { 
-            get: { tags: ['Properties'], summary: 'ดึงรายการประกาศทั้งหมด' }, 
+            get: { 
+                tags: ['Properties'], 
+                summary: 'ดึงรายการประกาศทั้งหมด',
+                description: 'ใช้สำหรับแสดงผลหน้าหลักหรือรายการอสังหาฯ ทั้งหมด'
+            }, 
             post: { 
                 tags: ['Properties'], 
                 summary: 'สร้างประกาศใหม่', 
+                description: 'ผู้ขายหรือแอดมินใช้สร้างประกาศขาย/เช่าอสังหาฯ ใหม่',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
@@ -129,34 +159,121 @@ const swaggerDocument = {
         '/api/properties/search': { 
             get: { 
                 tags: ['Properties'], 
-                summary: 'ค้นหาและกรอง',
+                summary: 'ค้นหาและกรอง (Search & Filter)',
+                description: 'ค้นหาตามช่วงราคา, จังหวัด, ประเภท หรือจำนวนห้องนอน',
                 parameters: [
                     { name: 'minPrice', in: 'query', schema: { type: 'number' } },
                     { name: 'maxPrice', in: 'query', schema: { type: 'number' } },
-                    { name: 'province', in: 'query', schema: { type: 'string' } }
+                    { name: 'province', in: 'query', schema: { type: 'string' } },
+                    { name: 'type', in: 'query', schema: { type: 'string', enum: ['SALE', 'RENT'] } },
+                    { name: 'category', in: 'query', schema: { type: 'string' } },
+                    { name: 'bedrooms', in: 'query', schema: { type: 'integer' } }
                 ]
             } 
         },
         '/api/properties/{id}': { 
-            get: { tags: ['Properties'], summary: 'ดึงรายละเอียดรายประกาศ' },
+            get: { 
+                tags: ['Properties'], 
+                summary: 'ดึงรายละเอียดรายประกาศ',
+                description: 'ดึงข้อมูลทั้งหมดของทรัพย์นั้นๆ รวมถึงข้อมูลเจ้าของและรูปภาพ',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }]
+            },
             put: { 
                 tags: ['Properties'], 
                 summary: 'แก้ไขประกาศ', 
+                description: 'แก้ไขข้อมูลในประกาศที่เคยลงไว้ (เฉพาะเจ้าของหรือแอดมิน)',
                 security: [{ bearerAuth: [] }],
                 parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
                 requestBody: {
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/PropertyRequest' } } }
                 }
             },
-            delete: { tags: ['Properties'], summary: 'ลบประกาศ', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }] }
+            delete: { 
+                tags: ['Properties'], 
+                summary: 'ลบประกาศ', 
+                description: 'ลบประกาศออกจากระบบ (เฉพาะเจ้าของหรือแอดมิน)',
+                security: [{ bearerAuth: [] }], 
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }] 
+            }
+        },
+        '/api/properties/{id}/view': {
+            patch: {
+                tags: ['Properties'],
+                summary: 'เพิ่มจำนวนผู้เข้าชม (Increment View)',
+                description: 'เรียกใช้เมื่อมีการเปิดดูหน้ารายละเอียดเพื่อเก็บสถิติความนิยม',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }]
+            }
+        },
+
+        // --- Favorites ---
+        '/api/favorites': {
+            get: {
+                tags: ['Favorites'],
+                summary: 'ดึงรายการโปรดของผู้ใช้',
+                description: 'รายการอสังหาฯ ทั้งหมดที่ผู้ใช้คนนี้กดบันทึกไว้',
+                security: [{ bearerAuth: [] }]
+            },
+            post: {
+                tags: ['Favorites'],
+                summary: 'เพิ่มเข้ารายการโปรด',
+                description: 'บันทึกทรัพย์ที่สนใจไว้ดูภายหลัง',
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    content: { 'application/json': { schema: { type: 'object', properties: { property_id: { type: 'string' } } } } }
+                }
+            }
+        },
+        '/api/favorites/{propertyId}': {
+            delete: {
+                tags: ['Favorites'],
+                summary: 'ลบออกจากรายการโปรด',
+                description: 'นำทรัพย์ที่บันทึกไว้ออกจากการแจ้งเตือนหรือรายการโปรด',
+                security: [{ bearerAuth: [] }],
+                parameters: [{ name: 'propertyId', in: 'path', required: true, schema: { type: 'string' } }]
+            }
+        },
+
+        // --- Inquiries ---
+        '/api/inquiries': {
+            get: {
+                tags: ['Inquiries'],
+                summary: 'ดึงรายการข้อความสอบถาม',
+                description: 'ดึงข้อความที่ลูกค้าส่งมาถามข้อมูลเกี่ยวกับทรัพย์ (สำหรับผู้ขาย)',
+                security: [{ bearerAuth: [] }]
+            },
+            post: {
+                tags: ['Inquiries'],
+                summary: 'ส่งข้อความสอบถาม (Inquiry)',
+                description: 'ผู้ซื้อส่งข้อความหาผู้ขายเพื่อสอบถามรายละเอียดเพิ่มเติม',
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: { 'application/json': { schema: { $ref: '#/components/schemas/InquiryRequest' } } }
+                }
+            }
+        },
+
+        // --- Dashboard & Stats ---
+        '/api/dashboard/stats': {
+            get: {
+                tags: ['Dashboard'],
+                summary: 'ดึงข้อมูลสถิติรวม (Admin Only)',
+                description: 'สรุปจำนวนผู้ใช้, ผู้ขาย, และประกาศทั้งหมดในระบบ',
+                security: [{ bearerAuth: [] }]
+            }
         },
 
         // --- Announcements ---
         '/api/announcements': { 
-            get: { tags: ['Announcements'], summary: 'ดึงประกาศ Banner' }, 
+            get: { 
+                tags: ['Announcements'], 
+                summary: 'ดึงประกาศ Banner',
+                description: 'ดึงข้อมูลประกาศหรือโปรโมชั่นเพื่อแสดงบนหน้าแรกของเว็บ'
+            }, 
             post: { 
                 tags: ['Announcements'], 
                 summary: 'สร้างประกาศใหม่ (Admin Only)', 
+                description: 'แอดมินสร้างข่าวสารหรือแบนเนอร์ใหม่',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     content: { 'application/json': { schema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, type: { type: 'string' } } } } }

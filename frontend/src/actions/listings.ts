@@ -14,6 +14,7 @@ export async function createListing(
     formData: FormData
 ): Promise<CreateListingState> {
     
+    const id = formData.get('id') as string;
     const title = formData.get('title') as string;
     const price = parseFloat(formData.get('price') as string);
     const formUserId = formData.get('userId') as string;
@@ -27,6 +28,7 @@ export async function createListing(
     const bathrooms = parseInt(formData.get('bathrooms') as string || '0');
     const size = parseInt(formData.get('size') as string || '0');
     const interiorDetails = formData.get('interiorDetails') as string || '';
+    const status = formData.get('status') as string || 'ACTIVE';
 
     if (!title || price <= 0) {
         return { success: false, message: "กรุณากรอกชื่อและราคาให้ถูกต้อง" };
@@ -44,13 +46,16 @@ export async function createListing(
         bedrooms: bedrooms,
         bathrooms: bathrooms,
         size: size,
-        interiorDetails: interiorDetails
+        interiorDetails: interiorDetails,
+        status: status
     };
 
     try {
-        // 🚀 ยิงเข้า Backend ในเครื่องเดียวกัน (127.0.0.1) เสมอ
-        const response = await fetch('http://127.0.0.1:5000/api/properties', {
-            method: 'POST',
+        const url = id ? `http://127.0.0.1:5000/api/properties/${id}` : 'http://127.0.0.1:5000/api/properties';
+        const method = id ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(propertyData)
         });
@@ -62,11 +67,42 @@ export async function createListing(
 
         return { 
             success: true, 
-            message: `ลงประกาศ "${title}" เรียบร้อยแล้ว! 🏠✨`
+            message: id ? `แก้ไขประกาศ "${title}" เรียบร้อยแล้ว! 🏠✨` : `ลงประกาศ "${title}" เรียบร้อยแล้ว! 🏠✨`
         };
 
     } catch (error: any) {
         console.error("❌ Action Error:", error);
         return { success: false, message: `เกิดข้อผิดพลาด: ${error.message}` };
+    }
+}
+
+export async function sendInquiry(
+    propertyId: string, 
+    receiverId: string, 
+    message: string
+) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('กรุณาเข้าสู่ระบบเพื่อส่งข้อความ');
+
+        const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+        const response = await fetch(`http://${currentIP}:5000/api/inquiries`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ property_id: propertyId, receiver_id: receiverId, message })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'ส่งข้อความไม่สำเร็จ');
+        }
+
+        return { success: true, message: 'ส่งข้อความสอบถามเรียบร้อยแล้ว!' };
+    } catch (error: any) {
+        console.error("❌ Inquiry Error:", error);
+        return { success: false, message: error.message };
     }
 }

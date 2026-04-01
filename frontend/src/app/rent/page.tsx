@@ -14,7 +14,7 @@ export default function RentPage() {
     // ⭐️ Logic กรอง: เอาเฉพาะ "เช่า" (RENT)
     const filteredProperties = useMemo(() => {
         return properties.filter((p) => {
-            const isActive = p.status === 'ACTIVE';
+            const isVisible = ['ACTIVE', 'SOLD', 'BOOKED'].includes(p.status);
             const isRent = p.type === 'RENT'; // 👈 กรองตรงนี้
             const query = searchQuery.toLowerCase();
             const matchesSearch = 
@@ -22,7 +22,7 @@ export default function RentPage() {
                 p.address.toLowerCase().includes(query) ||
                 p.province.toLowerCase().includes(query);
 
-            return isActive && isRent && matchesSearch;
+            return isVisible && isRent && matchesSearch;
         });
     }, [properties, searchQuery]);
 
@@ -57,8 +57,14 @@ export default function RentPage() {
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
-                                        <span className="absolute top-4 right-4 bg-blue-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-blue-400/20">
-                                            เช่า
+                                        <span className={`absolute top-4 right-4 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-white/20 ${
+                                            property.status === 'SOLD' ? 'bg-rose-500/90' :
+                                            property.status === 'BOOKED' ? 'bg-orange-500/90' :
+                                            'bg-blue-500/90'
+                                        }`}>
+                                            {property.status === 'SOLD' ? '🤝 ซื้อขายแล้ว' : 
+                                             property.status === 'BOOKED' ? '📅 จองแล้ว' : 
+                                             'เช่า'}
                                         </span>
                                     </div>
                                     <CardContent className="p-6">
