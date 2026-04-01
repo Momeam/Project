@@ -5,12 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles, Eye } from 'lucide-react';
+import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles, Eye, Copy, Facebook, Send, Trash2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
 
 import { useFavoriteStore } from '@/stores/useFavoriteStore';
+import { useAuthStore } from '@/stores/useAuthStore'; // 👈 นำเข้า Auth Store
 
 export default function ListingDetailPage() {
     const params = useParams();
@@ -33,11 +34,14 @@ export default function ListingDetailPage() {
     // Using data from properties API
     const [sellerInfo, setSellerInfo] = useState<any>(null);
 
-    const getPropertyById = usePropertyStore((state) => state.getPropertyById);
+    const { getPropertyById, deleteProperty } = usePropertyStore(); // 👈 ดึงฟังก์ชันลบมาด้วย
     const { favoriteIds, toggleFavorite } = useFavoriteStore();
     const incrementViewCount = usePropertyStore((state) => state.incrementViewCount);
+    const currentUser = useAuthStore((state) => state.currentUser); // 👈 ดึงข้อมูลผู้ใช้ปัจจุบัน
     
     const storeProperty = getPropertyById(id);
+
+    const property = storeProperty || apiProperty;
 
     useEffect(() => { 
         setIsMounted(true); 
@@ -75,7 +79,46 @@ export default function ListingDetailPage() {
         }
     }, [id, storeProperty]);
 
-    const property = storeProperty || apiProperty;
+    // ตรวจสอบสิทธิ์ในการลบ (Admin หรือ เจ้าของโพสต์)
+    const canDelete = useMemo(() => {
+        if (!currentUser || !property) return false;
+        return currentUser.role === 'ADMIN' || String(currentUser.id) === String(property.userId || property.userid);
+    }, [currentUser, property]);
+
+    const handleDelete = async () => {
+        if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
+            try {
+                await deleteProperty(property.id, String(currentUser?.id), currentUser?.role || 'USER');
+                router.push('/'); // ลบเสร็จแล้วกลับหน้าหลัก
+            } catch (error) {
+                console.error('Failed to delete property:', error);
+            }
+        }
+    };
+
+    const handleShare = async () => {
+        const shareData = {
+            title: property?.title || 'HomeLink - อสังหาริมทรัพย์',
+            text: property?.description || 'เชิญชมประกาศอสังหาริมทรัพย์นี้ได้ที่ HomeLink',
+            url: window.location.href,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                console.log('Share cancelled or failed:', err);
+            }
+        } else {
+            // Fallback: Copy link or show custom menu (Simple alert for now)
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                alert('คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว! คุณสามารถนำไปแชร์ต่อใน Facebook, Line หรือ IG ได้ทันที 🏠✨');
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+            }
+        }
+    };
 
     const handleSendInquiry = async () => {
         if (!inquiryMessage.trim()) {
@@ -110,7 +153,8 @@ export default function ListingDetailPage() {
 
     useEffect(() => {
         if (property && property.images && property.images.length > 0) {
-            setActiveImage(property.images[0].url);
+            const firstImageUrl = property.images[0].url || property.images[0].image_url;
+            setActiveImage(firstImageUrl);
         }
     }, [property]);
 
@@ -152,7 +196,14 @@ export default function ListingDetailPage() {
                         <ArrowLeft className="w-4 h-4 mr-2" /> ย้อนกลับ
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="icon" className="rounded-full"><Share2 className="w-4 h-4" /></Button>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="rounded-full"
+                            onClick={handleShare}
+                        >
+                            <Share2 className="w-4 h-4" />
+                        </Button>
                         
                         <Button 
                             variant="outline" 
@@ -180,11 +231,18 @@ export default function ListingDetailPage() {
                             </div>
                             {property.images && property.images.length > 1 && (
                                 <div className="flex gap-3 overflow-x-auto pb-2">
-                                    {property.images.map((img: any, index: number) => (
-                                        <button key={index} onClick={() => setActiveImage(img.url)} className={`relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === img.url ? 'border-slate-900 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                                            <img src={img.url} className="w-full h-full object-cover" alt="thumb" />
-                                        </button>
-                                    ))}
+                                    {property.images.map((img: any, index: number) => {
+                                        const imageUrl = img.url || img.image_url;
+                                        return (
+                                            <button 
+                                                key={index} 
+                                                onClick={() => setActiveImage(imageUrl)} 
+                                                className={`relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === imageUrl ? 'border-slate-900 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                            >
+                                                <img src={imageUrl} className="w-full h-full object-cover" alt="thumb" />
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -285,7 +343,7 @@ export default function ListingDetailPage() {
                                         {contactInfo.name}
                                         {sellerInfo?.role === 'SELLER' && <CheckCircle className="w-4 h-4 text-blue-500" />}
                                     </h3>
-                                    <p className="text-sm text-slate-500">ID: {property.userId || property.userid}</p>
+                                    <p className="text-sm text-slate-500">ID: {property.userId || property.userid || 'N/A'}</p>
                                 </div>
 
                                 <div className="space-y-3">
@@ -302,6 +360,16 @@ export default function ListingDetailPage() {
                                             <Phone className="w-5 h-5 mr-2" /> โทรหาเจ้าของ
                                         </a>
                                     </Button>
+
+                                    {canDelete && (
+                                        <Button 
+                                            onClick={handleDelete}
+                                            variant="destructive" 
+                                            className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg shadow-red-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        >
+                                            <Trash2 className="w-5 h-5 mr-2" /> ลบประกาศนี้
+                                        </Button>
+                                    )}
                                 </div>
 
                                 {/* Inquiry Form */}

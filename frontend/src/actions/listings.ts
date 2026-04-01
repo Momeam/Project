@@ -47,10 +47,30 @@ export async function createListing(
         bathrooms: bathrooms,
         size: size,
         interiorDetails: interiorDetails,
-        status: status
+        status: status,
+        imageUrls: [] as string[] // 👈 เพิ่มฟิลด์สำหรับเก็บ URL รูปภาพ
     };
 
     try {
+        // 1. จัดการรูปภาพ (ถ้ามีการอัปโหลด)
+        const imageFiles = formData.getAll('images') as File[];
+        if (imageFiles.length > 0 && imageFiles[0].size > 0) {
+            for (const file of imageFiles) {
+                const imageFormData = new FormData();
+                imageFormData.append('image', file);
+
+                const uploadResponse = await fetch('http://127.0.0.1:5000/api/upload-single', {
+                    method: 'POST',
+                    body: imageFormData
+                });
+
+                if (uploadResponse.ok) {
+                    const uploadData = await uploadResponse.json();
+                    propertyData.imageUrls.push(uploadData.url);
+                }
+            }
+        }
+
         const url = id ? `http://127.0.0.1:5000/api/properties/${id}` : 'http://127.0.0.1:5000/api/properties';
         const method = id ? 'PUT' : 'POST';
 

@@ -36,11 +36,26 @@ router.get('/seller/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [GET] ดึงรายการอสังหาฯ ทั้งหมด
+// 2. Operator: Select
+// การดึงข้อมูลจากฐานข้อมูล (SELECT)
+// ใช้คำสั่ง SQL SELECT * FROM Properties เพื่อเลือกข้อมูลทั้งหมดจากตารางประกาศอสังหาริมทรัพย์
+// โดยมีการจัดเรียงลำดับตามวันที่สร้าง (createdAt) จากใหม่ไปเก่า
 router.get('/', async (req, res) => {
     try {
+        // ดึงข้อมูล Property ทั้งหมด
         const result = await pool.query('SELECT * FROM Properties ORDER BY createdAt DESC');
-        res.status(200).json(result.rows);
+        const properties = result.rows;
+
+        // ดึงรูปภาพทั้งหมดมา Map เข้ากับ Property
+        const imagesResult = await pool.query('SELECT * FROM PropertyImages');
+        const allImages = imagesResult.rows;
+
+        const propertiesWithImages = properties.map(p => ({
+            ...p,
+            images: allImages.filter(img => img.property_id === p.id).map(img => ({ url: img.image_url }))
+        }));
+
+        res.status(200).json(propertiesWithImages);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -58,62 +73,76 @@ router.get('/:id', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูลประกาศนี้' });
         
         const imagesResult = await pool.query('SELECT * FROM PropertyImages WHERE property_id = $1', [id]);
-        const property = { ...result.rows[0], images: imagesResult.rows };
+        const property = { 
+            ...result.rows[0], 
+            images: imagesResult.rows.map(img => ({ url: img.image_url })) // Map ให้เป็น format { url: '...' }
+        };
         res.status(200).json(property);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [POST] สร้างประกาศใหม่ (Requires Token & Seller/Admin Role)
-router.post('/', verifyToken, verifyRole(['SELLER', 'ADMIN']), async (req, res) => {
+// 3. Operator: Insert
+// การเพิ่มข้อมูลลงในฐานข้อมูล (INSERT)
+// ใช้คำสั่ง SQL INSERT INTO Properties เพื่อบันทึกข้อมูลประกาศใหม่ลงในตาราง
+router.post('/', async (req, res) => {
     try {
         const p = req.body;
         if (!p.title || !p.price) return res.status(400).json({ error: 'กรุณากรอกหัวข้อและราคา' });
+
+        // 🟢 ตัดเรื่อง Token ออก: ถ้าไม่มี userId ส่งมาให้ใช้ 'anonymous' หรือ ID เริ่มต้น
+        const userId = p.userId || 'anonymous';
 
         const queryText = `INSERT INTO Properties 
             (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE') RETURNING *`; 
 
         const values = [
-            req.user.id, p.title, p.description || '', p.type || 'SALE', p.category || 'CONDO', p.price, 
+            userId, p.title, p.description || '', p.type || 'SALE', p.category || 'CONDO', p.price, 
             p.address || '', p.province || '', p.bedrooms || 0, p.bathrooms || 0, p.size || 0, p.interiorDetails || ''
         ];
         
         const result = await pool.query(queryText, values);
+        const propertyId = result.rows[0].id;
+
+        // 🖼️ เพิ่มรูปภาพ (ถ้ามีส่งมา)
+        if (p.imageUrls && Array.isArray(p.imageUrls)) {
+            for (const url of p.imageUrls) {
+                await pool.query('INSERT INTO PropertyImages (property_id, image_url) VALUES ($1, $2)', [propertyId, url]);
+            }
+        }
+        
         res.status(201).json({ message: 'บันทึกสำเร็จ!', property: result.rows[0] });
-    } catch (err) { res.status(500).json({ error: 'ไม่สามารถบันทึกข้อมูลได้' }); }
+    } catch (err) { 
+        console.error(err);
+        res.status(500).json({ error: 'ไม่สามารถบันทึกข้อมูลได้' }); 
+    }
 });
 
-// [PUT] แก้ไขประกาศ
-router.put('/:id', verifyToken, verifyRole(['SELLER', 'ADMIN']), async (req, res) => {
+// 4. Operator: Update
+// การแก้ไขข้อมูลในฐานข้อมูล (UPDATE)
+// ใช้คำสั่ง SQL UPDATE Properties เพื่อแก้ไขฟิลด์ข้อมูลในแถวที่มี ID ตรงกับที่ระบุ
+router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const p = req.body;
         
-        // Ownership check
-        const prop = await pool.query('SELECT userId FROM Properties WHERE id = $1', [id]);
-        if (prop.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
-        if (prop.rows[0].userid != req.user.id && req.user.role !== 'ADMIN') {
-            return res.status(403).json({ error: 'คุณไม่ใช่เจ้าของประกาศนี้' });
-        }
-
+        // 🟢 ตัดเรื่อง Ownership check (Token) ออกเพื่อให้แก้ไขได้เลย
         const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5, status=$6 WHERE id=$7 RETURNING *`;
         const result = await pool.query(queryText, [p.title, p.price, p.description, p.address, p.interiorDetails || '', p.status || 'ACTIVE', id]);
         
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
         res.status(200).json({ message: 'แก้ไขสำเร็จ!', property: result.rows[0] });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [DELETE] ลบประกาศ
-router.delete('/:id', verifyToken, verifyRole(['SELLER', 'ADMIN']), async (req, res) => {
+// 5. Operator: Delete
+// การลบข้อมูลออกจากฐานข้อมูล (DELETE)
+// ใช้คำสั่ง SQL DELETE FROM Properties WHERE id = $1 เพื่อลบแถวข้อมูลตาม ID ที่ส่งมา
+router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
-        const prop = await pool.query('SELECT userId FROM Properties WHERE id = $1', [id]);
-        if (prop.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
-        if (prop.rows[0].userid != req.user.id && req.user.role !== 'ADMIN') {
-            return res.status(403).json({ error: 'คุณไม่ใช่เจ้าของประกาศนี้' });
-        }
-
+        // 🟢 ตัดเรื่อง Ownership check (Token) ออกเพื่อให้ลบได้เลย
         await pool.query('DELETE FROM Properties WHERE id = $1', [id]);
         res.status(200).json({ message: 'ลบสำเร็จ! 🗑️' });
     } catch (err) { res.status(500).json({ error: err.message }); }

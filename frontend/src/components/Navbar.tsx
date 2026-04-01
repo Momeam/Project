@@ -85,7 +85,7 @@ export default function Navbar() {
                     <Link href="/sellers" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname.startsWith('/sellers') ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>ค้นหาผู้ขาย</Link>
                     {isLoggedIn && (
                         <Link href="/my-properties" className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${pathname === '/my-properties' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>
-                            {role === 'SELLER' ? 'ประกาศของฉัน' : 'รายการโปรด'}
+                            รายการโปรด
                         </Link>
                     )}
                 </div>

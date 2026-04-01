@@ -7,7 +7,7 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { Home, MapPin, FileText, Key, Car, Sofa, Calendar, AlignLeft, CheckCircle } from 'lucide-react';
+import { Home, MapPin, FileText, Key, Car, Sofa, Calendar, AlignLeft, CheckCircle, Plus, XCircle } from 'lucide-react';
 import { Property } from '@/lib/types';
 
 // Type สำหรับ State ในฟอร์ม
@@ -26,8 +26,17 @@ type FormDataState = {
     commonFacilities: { pool: boolean; fitness: boolean; parking: boolean; };
 };
 
-function SubmitButton({ isEdit }: { isEdit: boolean }) {
+function SubmitButton({ isEdit, isSuccess }: { isEdit: boolean, isSuccess: boolean }) {
     const { pending } = useFormStatus();
+    
+    if (isSuccess) {
+        return (
+            <button type="button" disabled className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-green-500 transition-all">
+                <CheckCircle className="w-5 h-5 mr-2" /> ลงประกาศสำเร็จ!
+            </button>
+        );
+    }
+
     return (
         <button type="submit" disabled={pending} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 transition-all">
             {pending ? 'กำลังบันทึกข้อมูลลงฐานข้อมูล...' : (isEdit ? 'บันทึกการแก้ไข' : 'ลงประกาศทันที')}
@@ -76,6 +85,48 @@ export default function AddListingForm({ property, isEdit = false }: AddListingF
         longitude: property?.longitude,
         commonFacilities: { pool: false, fitness: false, parking: false },
     });
+    // ⭐️ เมื่อได้รับข้อมูล property มาเพื่อแก้ไข ให้เซ็ตค่าเริ่มต้นในฟอร์ม
+    useEffect(() => {
+        if (property && isEdit) {
+            setFormData({
+                title: property.title || '', 
+                price: property.price || 0, 
+                type: property.type || 'SALE', 
+                category: property.category || 'CONDO', 
+                address: property.address || '', 
+                description: property.description || '', 
+                interiorDetails: property.interiorDetails || '',
+                bedrooms: property.bedrooms || 1, 
+                bathrooms: property.bathrooms || 1, 
+                size: property.size || 0,
+                floor: property.floor || 0, 
+                yearBuilt: property.yearBuilt || new Date().getFullYear(), 
+                parking: property.parking || 1, 
+                landSize: property.landSize || 0,
+                furniture: property.furniture || 'PARTLY', 
+                nearbyTransport: property.nearbyTransport || '',
+                deposit: property.deposit || 2, 
+                minContract: property.minContract || 12,
+                status: property.status || 'ACTIVE',
+                images: [], 
+                latitude: property.latitude, 
+                longitude: property.longitude,
+                commonFacilities: { pool: false, fitness: false, parking: false },
+            });
+        } else if (!isEdit) {
+            // ถ้าเป็นการลงประกาศใหม่ (Reset ฟอร์ม)
+            setFormData({
+                title: '', price: 0, type: 'SALE', category: 'CONDO', address: '', 
+                description: '', interiorDetails: '', bedrooms: 1, bathrooms: 1, 
+                size: 0, floor: 0, yearBuilt: new Date().getFullYear(), parking: 1, 
+                landSize: 0, furniture: 'PARTLY', nearbyTransport: '', deposit: 2, 
+                minContract: 12, status: 'ACTIVE', images: [], 
+                latitude: undefined, longitude: undefined,
+                commonFacilities: { pool: false, fitness: false, parking: false },
+            });
+        }
+    }, [property, isEdit]);
+
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
     const initialState = { success: false, message: '', newProperty: undefined };
@@ -111,18 +162,19 @@ export default function AddListingForm({ property, isEdit = false }: AddListingF
         setFormData(prev => ({ ...prev, [field]: value }));
     };
     
-   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            // ⭐️ เปลี่ยนมาใช้วิธีวนลูปแบบดั้งเดิม (ชัวร์ 100% ไม่มี Error)
             const filesArray: File[] = [];
             for (let i = 0; i < e.target.files.length; i++) {
                 filesArray.push(e.target.files[i]);
             }
             
-            // นำ Array ที่ได้ไปใช้งานต่อ
-            setFormData(prev => ({ ...prev, images: filesArray }));
-            const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-            setImagePreviews(newPreviews);
+            if (filesArray.length > 0) {
+                setFormData(prev => ({ ...prev, images: [...prev.images, ...filesArray] }));
+                
+                const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+                setImagePreviews(prev => [...prev, ...newPreviews]);
+            }
         }
     };
     
@@ -308,17 +360,53 @@ export default function AddListingForm({ property, isEdit = false }: AddListingF
 
             {/* กลุ่มที่ 5: รูปภาพ */}
             <section className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <label className="block text-lg font-semibold text-blue-600">รูปภาพประกอบ</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer relative dark:border-gray-600">
-                    <input type="file" name="images" onChange={handleImageChange} multiple accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    <p className="text-gray-500 dark:text-gray-400">คลิกเพื่อเลือกรูปภาพ หรือลากไฟล์มาวางที่นี่</p>
-                    <p className="text-xs text-gray-400 mt-1">(รองรับ JPG, PNG แนะนำให้ใส่หลายรูป)</p>
+                <label className="block text-lg font-bold text-blue-600 dark:text-blue-400">
+                    รูปภาพประกอบ
+                </label>
+                
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center hover:border-blue-500 transition-all bg-gray-50 dark:bg-gray-900/50 group relative">
+                    <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        name="images"
+                    />
+                    <div className="space-y-2">
+                        <div className="mx-auto w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Plus className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">คลิกเพื่อเลือกรูปภาพ หรือลากไฟล์มาวางที่นี่</p>
+                        <p className="text-xs text-gray-400">(รองรับ JPG, PNG แนะนำให้ใส่หลายรูป)</p>
+                    </div>
                 </div>
+
+                {/* แสดงรูปภาพตัวอย่าง */}
                 {imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
-                        {imagePreviews.map((url, index) => (
-                            <div key={index} className="aspect-square relative rounded-md overflow-hidden border dark:border-gray-600">
-                                <img src={url} className="w-full h-full object-cover" />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-2">
+                        {imagePreviews.map((preview, index) => (
+                            <div key={index} className="relative aspect-square rounded-xl overflow-hidden group border dark:border-gray-700 shadow-sm">
+                                <img
+                                    src={preview}
+                                    alt={`preview-${index}`}
+                                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newImages = [...formData.images];
+                                        newImages.splice(index, 1);
+                                        setFormData(prev => ({ ...prev, images: newImages }));
+                                        
+                                        const newPreviews = [...imagePreviews];
+                                        newPreviews.splice(index, 1);
+                                        setImagePreviews(newPreviews);
+                                    }}
+                                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                >
+                                    <XCircle className="w-4 h-4" />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -331,7 +419,7 @@ export default function AddListingForm({ property, isEdit = false }: AddListingF
                 </div>
             )}
             
-            <SubmitButton isEdit={isEdit} />
+            <SubmitButton isEdit={isEdit} isSuccess={state.success} />
         </form>
     );
 }

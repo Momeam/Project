@@ -108,24 +108,29 @@ export const usePropertyStore = create<PropertyState>()(
 
             // 🚀 ฟังก์ชันลบข้อมูล (ออโต้ดึง IP เครื่อง)
             deleteProperty: async (id, userId, role) => {
-                const property = get().properties.find(p => p.id === id);
-                if (role === 'ADMIN' || property?.userId === userId) {
-                    try {
-                        const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-                        const res = await fetch(`http://${currentIP}:5000/api/properties/${id}`, {
-                            method: 'DELETE'
-                        });
-                        
-                        if (res.ok) {
-                            set((state) => ({ properties: state.properties.filter((p) => p.id !== id) }));
-                        } else {
-                            alert("ไม่สามารถลบข้อมูลจากฐานข้อมูลได้");
+                try {
+                    const token = localStorage.getItem('token');
+                    const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+                    
+                    // 🟢 ตัดเรื่องการตรวจสอบสิทธิ์ฝั่ง Frontend ออกตามคำขอ (ให้สิทธิ์ Admin/Seller ลบได้เลย)
+                    // เนื่องจาก Backend ได้ถูกปลดล็อกเรื่อง Token ออกแล้ว
+                    const res = await fetch(`http://${currentIP}:5000/api/properties/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
                         }
-                    } catch (err) {
-                        console.error("Delete failed", err);
+                    });
+                    
+                    if (res.ok) {
+                        set((state) => ({ properties: state.properties.filter((p) => p.id !== id) }));
+                        alert("🗑️ ลบประกาศเรียบร้อยแล้ว!");
+                    } else {
+                        const errorData = await res.json();
+                        alert(errorData.error || "ไม่สามารถลบข้อมูลจากฐานข้อมูลได้");
                     }
-                } else {
-                    alert('คุณไม่มีสิทธิ์ลบรายการนี้');
+                } catch (err) {
+                    console.error("Delete failed", err);
+                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
                 }
             },
 

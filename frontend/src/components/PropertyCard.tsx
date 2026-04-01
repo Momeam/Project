@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Property } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { MapPin, DoorOpen, Ruler, Eye, Heart } from 'lucide-react'
+import { MapPin, DoorOpen, Ruler, Eye, Heart, Share2 } from 'lucide-react'
 import { useFavoriteStore } from '@/stores/useFavoriteStore'
 
 interface PropertyCardProps {
@@ -16,6 +16,33 @@ export function PropertyCard({ property }: PropertyCardProps) {
     const pricePerSqm = property.size > 0 ? property.price / property.size : 0
     const { favoriteIds, toggleFavorite } = useFavoriteStore()
     const isFavorite = favoriteIds.has(property.id)
+
+    const handleShare = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const shareUrl = `${window.location.origin}/listings/${property.id}`;
+        const shareData = {
+            title: property.title,
+            text: `ชมประกาศ ${property.title} บน HomeLink`,
+            url: shareUrl,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                console.log('Share failed:', err);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                alert('คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว! คุณสามารถนำไปแชร์ต่อใน Facebook, Line หรือ IG ได้ทันที 🏠✨');
+            } catch (err) {
+                console.error('Clipboard copy failed:', err);
+            }
+        }
+    };
 
     return (
         <Link href={`/property/${property.id}`}>
@@ -30,6 +57,14 @@ export function PropertyCard({ property }: PropertyCardProps) {
                     className="absolute top-2 left-2 z-20 bg-white/80 dark:bg-black/40 backdrop-blur-md p-2 rounded-full shadow-sm hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700"
                 >
                     <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                </button>
+
+                {/* ปุ่มแชร์ */}
+                <button 
+                    onClick={handleShare}
+                    className="absolute top-2 left-12 z-20 bg-white/80 dark:bg-black/40 backdrop-blur-md p-2 rounded-full shadow-sm hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700"
+                >
+                    <Share2 className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                 </button>
 
                 {/* ภาพ */}

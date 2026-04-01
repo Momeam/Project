@@ -8,7 +8,7 @@ import { useFavoriteStore } from '@/stores/useFavoriteStore'
 import { PropertyCard } from '@/components/PropertyCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, ListTodo, Heart, Building2 } from 'lucide-react'
+import { Plus, ListTodo, Heart, Building2, LayoutDashboard } from 'lucide-react'
 import { Property } from '@/lib/types'
 
 export default function MyPropertiesPage() {
@@ -24,12 +24,8 @@ export default function MyPropertiesPage() {
     }, [fetchProperties])
 
     const displayProperties = useMemo(() => {
-        if (role === 'SELLER' || role === 'ADMIN') {
-            if (!userId) return []
-            return properties.filter(p => String(p.userId) === String(userId))
-        }
         return properties.filter(p => favoriteIds.has(p.id))
-    }, [properties, userId, role, favoriteIds])
+    }, [properties, favoriteIds])
 
     const isSeller = role === 'SELLER' || role === 'ADMIN'
 
@@ -40,21 +36,17 @@ export default function MyPropertiesPage() {
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-                            {isSeller ? (
-                                <><ListTodo className="w-10 h-10 text-blue-600" /> ประกาศของฉัน</>
-                            ) : (
-                                <><Heart className="w-10 h-10 text-red-500 fill-red-500" /> รายการโปรด</>
-                            )}
+                            <Heart className="w-10 h-10 text-red-500 fill-red-500" /> รายการโปรด
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400">
-                            {isSeller ? 'จัดการประกาศอสังหาริมทรัพย์ของคุณ' : 'อสังหาริมทรัพย์ที่คุณบันทึกไว้'}
+                            อสังหาริมทรัพย์ที่คุณบันทึกไว้
                         </p>
                     </div>
                     {isSeller && (
                         <Link href="/user/dashboard">
-                            <Button className="bg-green-600 hover:bg-green-700">
-                                <Plus className="w-4 h-4 mr-2" />
-                                เพิ่มประกาศใหม่
+                            <Button className="bg-slate-900 hover:bg-black text-white">
+                                <LayoutDashboard className="w-4 h-4 mr-2" />
+                                ไปที่หน้าจัดการประกาศ
                             </Button>
                         </Link>
                     )}
@@ -64,7 +56,7 @@ export default function MyPropertiesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="dark:bg-gray-800 border-none shadow-sm">
                         <CardContent className="pt-6">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">{isSeller ? 'จำนวนประกาศทั้งหมด' : 'จำนวนรายการโปรด'}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">จำนวนรายการโปรด</p>
                             <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{displayProperties.length}</p>
                         </CardContent>
                     </Card>
@@ -97,32 +89,15 @@ export default function MyPropertiesPage() {
                     </div>
                 ) : displayProperties.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
-                        {isSeller ? (
-                            <>
-                                <Building2 className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                                <p className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-4">
-                                    คุณยังไม่มีประกาศ
-                                </p>
-                                <Link href="/user/dashboard">
-                                    <Button className="bg-green-600 hover:bg-green-700">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        สร้างประกาศแรกของคุณ
-                                    </Button>
-                                </Link>
-                            </>
-                        ) : (
-                            <>
-                                <Heart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                                <p className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-4">
-                                    คุณยังไม่มีรายการโปรด
-                                </p>
-                                <Link href="/">
-                                    <Button className="bg-blue-600 hover:bg-blue-700">
-                                        ไปหาบ้านที่ถูกใจกัน!
-                                    </Button>
-                                </Link>
-                            </>
-                        )}
+                        <Heart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                        <p className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-4">
+                            คุณยังไม่มีรายการโปรด
+                        </p>
+                        <Link href="/">
+                            <Button className="bg-blue-600 hover:bg-blue-700">
+                                ไปหาบ้านที่ถูกใจกัน!
+                            </Button>
+                        </Link>
                     </div>
                 ) : (
                     <div>

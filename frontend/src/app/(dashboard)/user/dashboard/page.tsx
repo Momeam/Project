@@ -8,12 +8,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { usePropertyStore } from '@/stores/usePropertyStore'; 
 import { useInquiryStore } from '@/stores/useInquiryStore'; // 👈 นำเข้า Inquiry Store
 import Link from 'next/link';
-import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft, PartyPopper, RefreshCcw, MessageSquare, User, Mail, Phone } from 'lucide-react'; 
+import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft, PartyPopper, RefreshCcw, MessageSquare, User, Mail, Phone, Edit } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UserDashboardPage() {
     const [isMounted, setIsMounted] = useState(false);
+    const [editingProperty, setEditingProperty] = useState<any>(null); // 👈 เพิ่ม State สำหรับเก็บตัวที่กำลังแก้
     
     const currentUser = useAuthStore((state) => state.currentUser);
     const userId = currentUser?.id;
@@ -181,6 +182,17 @@ export default function UserDashboardPage() {
                                                 </Link>
                                                 <Button 
                                                     size="sm" 
+                                                    variant="outline" 
+                                                    className="h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                    onClick={() => {
+                                                        setEditingProperty(item);
+                                                        setActiveTab('ADD');
+                                                    }}
+                                                >
+                                                    <Edit className="w-3 h-3" />
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
                                                     variant="destructive" 
                                                     className="h-7 px-2"
                                                     onClick={() => handleDelete(item.id)}
@@ -246,17 +258,20 @@ export default function UserDashboardPage() {
                         )}
                     </div>
                 ) : (
-                    // หน้าลงประกาศ
+                    // หน้าลงประกาศ / แก้ไข
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <Button 
                             variant="ghost" 
-                            onClick={() => setActiveTab('LIST')} 
+                            onClick={() => {
+                                setEditingProperty(null);
+                                setActiveTab('LIST');
+                            }} 
                             className="mb-4 text-gray-500"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" /> ยกเลิก / กลับไปหน้ารายการ
                         </Button>
                         
-                        <AddListingForm />
+                        <AddListingForm property={editingProperty} isEdit={!!editingProperty} />
                     </div>
                 )}
             </div>

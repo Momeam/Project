@@ -3,15 +3,17 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 
-// [POST] Add to favorites
-router.post('/', verifyToken, async (req, res) => {
+// [POST] เพิ่มเข้ารายการโปรด
+router.post('/', async (req, res) => {
     try {
         const { property_id } = req.body;
-        const result = await pool.query(
-            'INSERT INTO Favorites (user_id, property_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *', 
-            [req.user.id, property_id]
-        );
-        res.status(201).json({ message: 'Added to favorites' });
+        const user_id = req.user ? req.user.id : 'anonymous'; // 🟢 ตัดเรื่อง Token ออก
+
+        const check = await pool.query('SELECT * FROM Favorites WHERE user_id = $1 AND property_id = $2', [user_id, property_id]);
+        if (check.rows.length > 0) return res.status(400).json({ error: 'รายการนี้ถูกบันทึกไปแล้ว' });
+
+        await pool.query('INSERT INTO Favorites (user_id, property_id) VALUES ($1, $2)', [user_id, property_id]);
+        res.status(201).json({ message: 'บันทึกสำเร็จ' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -29,12 +31,14 @@ router.get('/', verifyToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [DELETE] Remove favorite
-router.delete('/:propertyId', verifyToken, async (req, res) => {
+// [DELETE] ลบออกจากรายการโปรด
+router.delete('/:propertyId', async (req, res) => {
     try {
         const { propertyId } = req.params;
-        await pool.query('DELETE FROM Favorites WHERE user_id = $1 AND property_id = $2', [req.user.id, propertyId]);
-        res.status(200).json({ message: 'Removed from favorites' });
+        const user_id = req.user ? req.user.id : 'anonymous'; // 🟢 ตัดเรื่อง Token ออก
+        
+        await pool.query('DELETE FROM Favorites WHERE user_id = $1 AND property_id = $2', [user_id, propertyId]);
+        res.status(200).json({ message: 'ลบสำเร็จ' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -1,6 +1,10 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// 1. Operator: Connect
+// การเชื่อมต่อฐานข้อมูล (Database Connection)
+// ใช้ไลบรารี 'pg' (node-postgres) เพื่อสร้าง Pool สำหรับจัดการการเชื่อมต่อกับ PostgreSQL
+// โดยดึงค่า DATABASE_URL จาก environment variables (.env) มาใช้ในการระบุที่อยู่และสิทธิ์การเข้าถึง
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_4GSN5vqtrhzp@ep-nameless-dream-a1b3fs72-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
 });

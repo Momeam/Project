@@ -3,18 +3,22 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 
-// [POST] Buyer sends inquiry to Seller
-router.post('/', verifyToken, async (req, res) => {
+// [POST] ส่งข้อความสอบถาม
+router.post('/', async (req, res) => {
     try {
         const { receiver_id, property_id, message } = req.body;
+        // 🟢 ตัดเรื่อง Token ออก: ถ้าไม่มี sender_id ให้ใช้ 'anonymous'
+        const sender_id = req.user ? req.user.id : 'anonymous';
+
         if (!receiver_id || !property_id || !message) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน' });
         }
+
         const result = await pool.query(
             'INSERT INTO Inquiries (sender_id, receiver_id, property_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
-            [req.user.id, receiver_id, property_id, message]
+            [sender_id, receiver_id, property_id, message]
         );
-        res.status(201).json({ message: 'Inquiry sent', inquiry: result.rows[0] });
+        res.status(201).json(result.rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
