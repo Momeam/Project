@@ -5,23 +5,24 @@ import { useParams, useRouter } from 'next/navigation';
 import { usePropertyStore } from '@/stores/usePropertyStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Phone, MessageSquare, Mail, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles, Eye, Copy, Facebook, Send, Trash2 } from 'lucide-react';
+import { User, Phone, MessageSquare, MapPin, ArrowLeft, CheckCircle, Share2, Heart, Bed, Bath, Ruler, Loader2, Sparkles, Eye, Trash2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
 
 import { useFavoriteStore } from '@/stores/useFavoriteStore';
-import { useAuthStore } from '@/stores/useAuthStore'; // 👈 นำเข้า Auth Store
+import { useAuthStore } from '@/stores/useAuthStore'; 
+
+// 🟢 1. ย้ายการโหลด MapDisplay ออกมาข้างนอก Component ป้องกัน React แครช
+const MapDisplay = dynamic(
+    () => import('@/components/MapDisplay'),
+    { ssr: false, loading: () => <div className="h-[400px] w-full bg-slate-50 rounded-2xl animate-pulse flex items-center justify-center text-gray-400">กำลังโหลดแผนที่...</div> }
+);
 
 export default function ListingDetailPage() {
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
-
-    const MapDisplay = useMemo(() => dynamic(
-        () => import('@/components/MapDisplay'),
-        { loading: () => <div className="h-[400px] w-full bg-slate-50 rounded-2xl animate-pulse" />, ssr: false }
-    ), []);
 
     const [isMounted, setIsMounted] = useState(false);
     const [activeImage, setActiveImage] = useState<string>('');
@@ -30,40 +31,43 @@ export default function ListingDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [inquiryMessage, setInquiryMessage] = useState('');
     const [isSendingInquiry, setIsSendingInquiry] = useState(false);
-    
-    // Using data from properties API
     const [sellerInfo, setSellerInfo] = useState<any>(null);
 
-    const { getPropertyById, deleteProperty } = usePropertyStore(); // 👈 ดึงฟังก์ชันลบมาด้วย
-    const { favoriteIds, toggleFavorite } = useFavoriteStore();
-    const incrementViewCount = usePropertyStore((state) => state.incrementViewCount);
-    const currentUser = useAuthStore((state) => state.currentUser); // 👈 ดึงข้อมูลผู้ใช้ปัจจุบัน
+    // 🟢 2. ดึงฟังก์ชันอย่างปลอดภัย ป้องกันบัค "is not a function"
+    const getPropertyById = usePropertyStore((state) => state.getPropertyById); 
+    const deleteProperty = usePropertyStore((state) => state.deleteProperty); 
     
-    const storeProperty = getPropertyById(id);
-
+    // เซฟการดึงค่า favorite
+    const favoriteIds = useFavoriteStore((state) => state.favoriteIds || new Set());
+    const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
+    
+    const user = useAuthStore((state) => state.user); 
+    
+    // ดึงข้อมูลประกาศ
+    const storeProperty = typeof getPropertyById === 'function' ? getPropertyById(id) : null;
     const property = storeProperty || apiProperty;
+
+    // 🟢 3. ตัวกรองรูปภาพ ป้องกัน Database ส่งรูปมาเป็น String แล้วแครช
+    const safeImages = useMemo(() => {
+        if (!property?.images) return [];
+        if (typeof property.images === 'string') {
+            try { return JSON.parse(property.images); } catch { return []; }
+        }
+        return Array.isArray(property.images) ? property.images : [];
+    }, [property]);
 
     useEffect(() => { 
         setIsMounted(true); 
-        if (id) {
-            incrementViewCount(id);
-        }
-    }, [id, incrementViewCount]);
+    }, []);
 
-    // ดึงข้อมูลบ้าน
+    // ดึงข้อมูลบ้านจาก API จริง
     useEffect(() => {
         const fetchPropertyDetail = async () => {
             try {
                 const res = await fetch(`http://localhost:5000/api/properties/${id}`);
                 if (res.ok) {
                     const data = await res.json();
-                    const safeData = {
-                        ...data,
-                        images: data.images || [], 
-                        features: data.features || [],
-                        contact: data.contact || { phoneNumber: '-', email: '-', line: '-' }
-                    };
-                    setApiProperty(safeData);
+                    setApiProperty(data);
                 }
             } catch (error) {
                 console.error("Error fetching property:", error);
@@ -79,17 +83,23 @@ export default function ListingDetailPage() {
         }
     }, [id, storeProperty]);
 
-    // ตรวจสอบสิทธิ์ในการลบ (Admin หรือ เจ้าของโพสต์)
+    // ตรวจสอบสิทธิ์ในการลบ
     const canDelete = useMemo(() => {
-        if (!currentUser || !property) return false;
-        return currentUser.role === 'ADMIN' || String(currentUser.id) === String(property.userId || property.userid);
-    }, [currentUser, property]);
+        if (!user || !property) return false;
+        return user.role === 'ADMIN' || String(user.id) === String(property.userId || property.userid);
+    }, [user, property]);
 
     const handleDelete = async () => {
         if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
             try {
-                await deleteProperty(property.id, String(currentUser?.id), currentUser?.role || 'USER');
-                router.push('/'); // ลบเสร็จแล้วกลับหน้าหลัก
+                if (typeof deleteProperty === 'function') {
+                    await deleteProperty(property.id, String(user?.id), user?.role || 'USER');
+                } else {
+                    // ถ้าระบบ Store พัง ให้ยิงลบ API ตรงๆ เลย
+                    await fetch(`http://localhost:5000/api/properties/${property.id}`, { method: 'DELETE' });
+                }
+                alert('ลบประกาศเรียบร้อย!');
+                router.push('/');
             } catch (error) {
                 console.error('Failed to delete property:', error);
             }
@@ -97,73 +107,48 @@ export default function ListingDetailPage() {
     };
 
     const handleShare = async () => {
-        const shareData = {
-            title: property?.title || 'HomeLink - อสังหาริมทรัพย์',
-            text: property?.description || 'เชิญชมประกาศอสังหาริมทรัพย์นี้ได้ที่ HomeLink',
-            url: window.location.href,
-        };
-
         if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.log('Share cancelled or failed:', err);
-            }
+            try { await navigator.share({ title: property?.title, url: window.location.href }); } catch (err) {}
         } else {
-            // Fallback: Copy link or show custom menu (Simple alert for now)
-            try {
-                await navigator.clipboard.writeText(window.location.href);
-                alert('คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว! คุณสามารถนำไปแชร์ต่อใน Facebook, Line หรือ IG ได้ทันที 🏠✨');
-            } catch (err) {
-                console.error('Could not copy text: ', err);
-            }
+            navigator.clipboard.writeText(window.location.href);
+            alert('คัดลอกลิงก์เรียบร้อยแล้ว!');
         }
     };
 
     const handleSendInquiry = async () => {
-        if (!inquiryMessage.trim()) {
-            alert('กรุณากรอกข้อความสอบถาม');
-            return;
-        }
-
+        if (!inquiryMessage.trim()) return alert('กรุณากรอกข้อความ');
         setIsSendingInquiry(true);
-        const { sendInquiry } = await import('@/actions/listings');
-        const result = await sendInquiry(id, property.userId, inquiryMessage);
-        setIsSendingInquiry(false);
-
-        if (result.success) {
+        try {
+            const { sendInquiry } = await import('@/actions/listings');
+            const result = await sendInquiry(id, property.userId, inquiryMessage);
             alert(result.message);
-            setInquiryMessage('');
-        } else {
-            alert(result.message);
+            if (result.success) setInquiryMessage('');
+        } catch (error) {
+            alert('ส่งข้อความไม่สำเร็จ');
+        } finally {
+            setIsSendingInquiry(false);
         }
     };
 
-    // Data is now joined in the Backend!
     useEffect(() => {
         if (property && property.owner_name) {
             setSellerInfo({
-                username: property.owner_name,
-                tel: property.owner_tel,
-                email: property.owner_email,
-                line_id: property.owner_line
+                username: property.owner_name, tel: property.owner_tel, line_id: property.owner_line
             });
         }
     }, [property]);
 
+    // เซ็ตภาพแรกตอนโหลด
     useEffect(() => {
-        if (property && property.images && property.images.length > 0) {
-            const firstImageUrl = property.images[0].url || property.images[0].image_url;
-            setActiveImage(firstImageUrl);
+        if (safeImages.length > 0) {
+            setActiveImage(safeImages[0].url || safeImages[0].image_url || safeImages[0]);
         }
-    }, [property]);
+    }, [safeImages]);
 
-    // ⭐️ 3. ปรับให้ดึงข้อมูลจาก Database มาแสดงผลที่การ์ดฝั่งขวา
     const contactInfo = {
         name: sellerInfo?.username || 'ไม่ระบุชื่อ',
         phone: sellerInfo?.tel || '-',
         line: sellerInfo?.line_id || '-', 
-        email: sellerInfo?.email || '-',
         image: null
     };
 
@@ -190,26 +175,18 @@ export default function ListingDetailPage() {
     return (
         <div className="min-h-screen bg-slate-50/50 pt-32 pb-8">
             <div className="container mx-auto px-4 max-w-6xl">
-                {/* Breadcrumb & Actions */}
                 <div className="flex justify-between items-center mb-6">
                     <Button variant="ghost" onClick={() => router.back()} className="text-slate-500 hover:text-slate-900 pl-0 hover:bg-transparent">
                         <ArrowLeft className="w-4 h-4 mr-2" /> ย้อนกลับ
                     </Button>
                     <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="rounded-full"
-                            onClick={handleShare}
-                        >
+                        <Button variant="outline" size="icon" className="rounded-full" onClick={handleShare}>
                             <Share2 className="w-4 h-4" />
                         </Button>
-                        
                         <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className={`rounded-full transition-all ${favoriteIds.has(property.id) ? 'bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100' : 'hover:bg-slate-100'}`}
-                            onClick={() => toggleFavorite(property.id)}
+                            variant="outline" size="icon" 
+                            className={`rounded-full transition-all ${favoriteIds.has(property.id) ? 'bg-rose-50 border-rose-200 text-rose-500' : ''}`}
+                            onClick={() => typeof toggleFavorite === 'function' && toggleFavorite(property.id)}
                         >
                             <Heart className={`w-4 h-4 ${favoriteIds.has(property.id) ? 'fill-rose-500' : ''}`} />
                         </Button>
@@ -217,22 +194,19 @@ export default function ListingDetailPage() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    
-                    {/* --- ฝั่งซ้าย --- */}
                     <div className="lg:col-span-2 space-y-8">
-                        
                         {/* Gallery */}
                         <div className="space-y-4">
                             <div className="aspect-video bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 relative">
-                                <img src={activeImage || 'https://placehold.co/800x600?text=No+Image'} alt={property.title} className="w-full h-full object-contain bg-slate-50" />
-                                <span className={`absolute top-4 left-4 px-4 py-1.5 rounded-full text-xs font-bold tracking-wide text-white shadow-lg ${property.type === 'SALE' ? 'bg-emerald-500' : 'bg-sky-500'}`}>
+                                <img src={activeImage || 'https://placehold.co/800x600?text=No+Image'} alt={property.title} className="w-full h-full object-cover bg-slate-50" />
+                                <span className={`absolute top-4 left-4 px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-lg ${property.type === 'SALE' ? 'bg-emerald-500' : 'bg-sky-500'}`}>
                                     {property.type === 'SALE' ? 'ขาย' : 'เช่า'}
                                 </span>
                             </div>
-                            {property.images && property.images.length > 1 && (
+                            {safeImages.length > 1 && (
                                 <div className="flex gap-3 overflow-x-auto pb-2">
-                                    {property.images.map((img: any, index: number) => {
-                                        const imageUrl = img.url || img.image_url;
+                                    {safeImages.map((img: any, index: number) => {
+                                        const imageUrl = img.url || img.image_url || img;
                                         return (
                                             <button 
                                                 key={index} 
@@ -252,14 +226,10 @@ export default function ListingDetailPage() {
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                 <div>
                                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">{property.title}</h1>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-slate-500 dark:text-slate-400 text-sm">
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-slate-500 text-sm">
                                         <div className="flex items-center gap-2">
                                             <MapPin className="w-4 h-4 text-emerald-500" />
                                             <span>{property.address} {property.province}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Eye className="w-4 h-4 text-blue-500" />
-                                            <span>{property.viewCount || 0} ผู้เข้าชม</span>
                                         </div>
                                     </div>
                                 </div>
@@ -286,22 +256,8 @@ export default function ListingDetailPage() {
 
                             <div className="mt-6">
                                 <h3 className="text-lg font-semibold text-slate-900 mb-3 tracking-tight">รายละเอียด</h3>
-                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line text-lg">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
+                                <p className="text-slate-600 leading-relaxed whitespace-pre-line text-lg">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
                             </div>
-                            
-                            {property.interiorDetails && (
-                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5 text-emerald-500" />
-                                        จุดเด่นและรายละเอียดภายใน
-                                    </h3>
-                                    <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-900/50 shadow-inner">
-                                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line text-lg italic">
-                                            {property.interiorDetails}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Map & Calc */}
@@ -323,39 +279,26 @@ export default function ListingDetailPage() {
                         </div>
                     </div>
 
-                    {/* --- ฝั่งขวา --- */}
+                    {/* --- ฝั่งขวา (Contact) --- */}
                     <div className="lg:col-span-1">
                         <Card className="sticky top-24 border-0 shadow-xl shadow-slate-200/50 bg-white rounded-2xl overflow-hidden">
                             <div className="bg-slate-900 h-24 w-full"></div>
                             <CardContent className="p-6 relative">
                                 <div className="absolute -top-12 left-1/2 -translate-x-1/2">
                                     <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-white">
-                                        {contactInfo.image ? (
-                                            <img src={contactInfo.image} className="w-full h-full object-cover" alt="Seller" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300"><User className="w-10 h-10" /></div>
-                                        )}
+                                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300"><User className="w-10 h-10" /></div>
                                     </div>
                                 </div>
 
                                 <div className="mt-14 text-center mb-6">
                                     <h3 className="text-xl font-bold text-slate-900 flex items-center justify-center gap-1">
                                         {contactInfo.name}
-                                        {sellerInfo?.role === 'SELLER' && <CheckCircle className="w-4 h-4 text-blue-500" />}
                                     </h3>
-                                    <p className="text-sm text-slate-500">ID: {property.userId || property.userid || 'N/A'}</p>
+                                    <p className="text-sm text-slate-500">ID ประกาศ: {property.id || '-'}</p>
                                 </div>
 
                                 <div className="space-y-3">
-                                    <Button 
-                                        onClick={() => toggleFavorite(property.id)}
-                                        variant="outline" 
-                                        className="w-full h-14 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Heart className={`w-5 h-5 transition-colors ${favoriteIds.has(property.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
-                                        {favoriteIds.has(property.id) ? 'บันทึกแล้ว' : 'บันทึกรายการโปรด'}
-                                    </Button>
-                                    <Button asChild className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                    <Button asChild className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg shadow-lg transition-all hover:scale-[1.02]">
                                         <a href={`tel:${contactInfo.phone}`}>
                                             <Phone className="w-5 h-5 mr-2" /> โทรหาเจ้าของ
                                         </a>
@@ -365,7 +308,7 @@ export default function ListingDetailPage() {
                                         <Button 
                                             onClick={handleDelete}
                                             variant="destructive" 
-                                            className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg shadow-red-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                            className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg transition-all hover:scale-[1.02]"
                                         >
                                             <Trash2 className="w-5 h-5 mr-2" /> ลบประกาศนี้
                                         </Button>
@@ -373,28 +316,24 @@ export default function ListingDetailPage() {
                                 </div>
 
                                 {/* Inquiry Form */}
-                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                <div className="mt-8 pt-8 border-t border-slate-100">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                         <MessageSquare className="w-5 h-5 text-emerald-500" />
                                         ส่งข้อความสอบถาม
                                     </h3>
                                     <div className="space-y-4">
                                         <textarea 
-                                            placeholder="เช่น สนใจทรัพย์นี้ครับ นัดดูได้วันไหนบ้างครับ?" 
+                                            placeholder="สนใจทรัพย์นี้ครับ นัดดูได้วันไหนบ้าง?" 
                                             value={inquiryMessage}
                                             onChange={(e) => setInquiryMessage(e.target.value)}
-                                            className="w-full min-h-[120px] p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 outline-none transition-all resize-none text-sm"
+                                            className="w-full min-h-[120px] p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none transition-all resize-none text-sm"
                                         />
                                         <Button 
                                             onClick={handleSendInquiry}
                                             disabled={isSendingInquiry}
-                                            className="w-full h-12 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl font-bold transition-all hover:bg-black dark:hover:bg-slate-100 disabled:opacity-50"
+                                            className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold transition-all hover:bg-black disabled:opacity-50"
                                         >
-                                            {isSendingInquiry ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                'ส่งข้อความ'
-                                            )}
+                                            {isSendingInquiry ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ส่งข้อความ'}
                                         </Button>
                                     </div>
                                 </div>

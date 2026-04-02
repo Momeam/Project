@@ -3,10 +3,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationForm from '@/components/VerificationForm'; 
 import AddListingForm from '@/components/AddListingForm';
-import AnnouncementBanner from '@/components/AnnouncementBanner'; // 👈 นำเข้า Banner ประกาศ
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePropertyStore } from '@/stores/usePropertyStore'; 
-import { useInquiryStore } from '@/stores/useInquiryStore'; // 👈 นำเข้า Inquiry Store
+import { useInquiryStore } from '@/stores/useInquiryStore'; 
 import Link from 'next/link';
 import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft, PartyPopper, RefreshCcw, MessageSquare, User, Mail, Phone, Edit } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
@@ -14,27 +14,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UserDashboardPage() {
     const [isMounted, setIsMounted] = useState(false);
-    const [editingProperty, setEditingProperty] = useState<any>(null); // 👈 เพิ่ม State สำหรับเก็บตัวที่กำลังแก้
+    const [editingProperty, setEditingProperty] = useState<any>(null);
     
-    const currentUser = useAuthStore((state) => state.currentUser);
-    const userId = currentUser?.id;
-    const role = currentUser?.role;
-    const justUpgraded = useAuthStore((state) => state.justUpgraded); // 👈 ดึงค่ามาเช็ก
-    const setJustUpgraded = useAuthStore((state) => state.setJustUpgraded); // 👈 ดึง action มาเคลียร์ค่า
-    const verificationStatus = currentUser?.verificationStatus || 'IDLE';
+    // 🟢 1. เปลี่ยนมาใช้ `user` ให้ตรงกับ Store ของจริง
+    const user = useAuthStore((state) => state.user);
+    const userId = user?.id;
+    const role = user?.role;
+    
+    const justUpgraded = useAuthStore((state) => state.justUpgraded); 
+    const setJustUpgraded = useAuthStore((state) => state.setJustUpgraded); 
+    const verificationStatus = 'IDLE'; // ชั่วคราว: เพราะใน DB จริงเรายังไม่มีคอลัมน์เก็บสถานะเอกสาร
 
     const { inquiries, fetchInquiries, isLoading: isLoadingInquiries } = useInquiryStore();
 
+    // 🟢 2. ดึงข้อมูล Property จาก API จริง
+    const allListings = usePropertyStore((state) => state.properties);
+    const fetchProperties = usePropertyStore((state) => state.fetchProperties);
+
     useEffect(() => {
         setIsMounted(true);
+        // สั่งให้ดึงข้อมูลบ้านจาก Database ใหม่ทุกครั้งที่เปิดหน้านี้
+        fetchProperties();
+        
         if (role === 'SELLER') {
             fetchInquiries();
         }
-    }, [role, fetchInquiries]);
+    }, [role, fetchProperties, fetchInquiries]);
 
-    const allListings = usePropertyStore((state) => state.properties);
-    const deleteProperty = usePropertyStore((state) => state.deleteProperty);
-
+    // 🟢 3. กรองเอาเฉพาะประกาศที่ userId ตรงกับคนที่ล็อกอินอยู่
     const myListings = useMemo(() => {
         if (!userId) return [];
         return allListings.filter(p => String(p.userId) === String(userId));
@@ -42,9 +49,25 @@ export default function UserDashboardPage() {
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');
 
-    const handleDelete = (id: string) => {
-        if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?")) {
-            deleteProperty(id, userId ? String(userId) : '', 'SELLER');
+    // 🟢 4. ระบบลบประกาศ ยิง API ตัวจริงไปที่พอร์ต 5000
+    const handleDelete = async (id: string) => {
+        if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้? 🗑️")) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/properties/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    alert('ลบประกาศออกจากฐานข้อมูลสำเร็จ! ✅');
+                    fetchProperties(); // โหลดข้อมูลใหม่มาแสดงทันที
+                } else {
+                    const data = await response.json();
+                    alert(`ไม่สามารถลบได้: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            }
         }
     };
 
@@ -93,7 +116,7 @@ export default function UserDashboardPage() {
                         </p>
 
                         <Button 
-                            onClick={() => setJustUpgraded(false)} // 👈 กดแล้วเคลียร์ค่าเพื่อเข้าหน้า Dashboard จริง
+                            onClick={() => setJustUpgraded(false)} 
                             className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
                         >
                             เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
@@ -105,16 +128,14 @@ export default function UserDashboardPage() {
     }
 
     // -------------------------------------------------------
-    // 1. ส่วนแสดงผลสำหรับ SELLER (อนุมัติแล้ว)
+    // 1. ส่วนแสดงผลสำหรับ SELLER หรือ ADMIN
     // -------------------------------------------------------
-    if (role === 'SELLER') {
+    if (role === 'SELLER' || role === 'ADMIN') {
         return (
             <div className="container mx-auto p-4 md:py-8 max-w-5xl">
                 
-                {/* 📢 แสดงประกาศและสิทธิพิเศษจากแอดมิน */}
                 <AnnouncementBanner />
 
-                {/* Header Dashboard */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div className="flex items-center gap-4 w-full">
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -124,7 +145,7 @@ export default function UserDashboardPage() {
                     <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
                         <Button 
                             variant={activeTab === 'LIST' ? 'default' : 'outline'}
-                            onClick={() => setActiveTab('LIST')}
+                            onClick={() => { setActiveTab('LIST'); setEditingProperty(null); fetchProperties(); }}
                             className="whitespace-nowrap"
                         >
                             <List className="w-4 h-4 mr-2" /> รายการของฉัน ({myListings.length})
@@ -138,7 +159,7 @@ export default function UserDashboardPage() {
                         </Button>
                         <Button 
                             variant={activeTab === 'ADD' ? 'default' : 'outline'}
-                            onClick={() => setActiveTab('ADD')}
+                            onClick={() => { setEditingProperty(null); setActiveTab('ADD'); }}
                             className={`whitespace-nowrap ${activeTab === 'ADD' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                         >
                             <Plus className="w-4 h-4 mr-2" /> ลงประกาศใหม่
@@ -146,68 +167,75 @@ export default function UserDashboardPage() {
                     </div>
                 </div>
 
-                {/* Content Area */}
                 {activeTab === 'LIST' ? (
                     <div className="space-y-4">
                         {myListings.length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
-                                <p className="text-gray-500">คุณยังไม่มีประกาศอสังหาริมทรัพย์</p>
+                                <p className="text-gray-500">คุณยังไม่มีประกาศอสังหาริมทรัพย์ในระบบ</p>
                                 <Button variant="link" onClick={() => setActiveTab('ADD')} className="text-blue-600">
-                                    เริ่มลงประกาศเลย!
+                                    เริ่มลงประกาศแรกของคุณเลย!
                                 </Button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {myListings.map((item) => (
-                                    <Card key={item.id} className="dark:bg-gray-800 overflow-hidden flex flex-row h-32">
-                                        <div className="w-32 bg-gray-200 relative">
-                                            <img 
-                                                src={item.images[0]?.url || 'https://placehold.co/150?text=No+Img'} 
-                                                alt={item.title}
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <span className={`absolute top-0 left-0 px-2 py-0.5 text-xs text-white ${item.status === 'ACTIVE' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                                                {item.status}
-                                            </span>
-                                        </div>
-                                        <CardContent className="flex-1 p-3 flex flex-col justify-between">
-                                            <div>
-                                                <h3 className="font-bold text-sm line-clamp-1">{item.title}</h3>
-                                                <p className="text-xs text-gray-500">{item.category} • {item.type}</p>
-                                                <p className="text-red-600 font-bold text-sm">฿{item.price.toLocaleString()}</p>
+                                {myListings.map((item) => {
+                                    // 🟢 5. เช็กรูปภาพให้ปลอดภัย เผื่อ Database ยังไม่มีรูป
+                                    const imageUrl = item.images && item.images.length > 0 
+                                        ? (item.images[0].url || item.images[0]) 
+                                        : 'https://placehold.co/150?text=No+Img';
+
+                                    return (
+                                        <Card key={item.id} className="dark:bg-gray-800 overflow-hidden flex flex-row h-32">
+                                            <div className="w-32 bg-gray-200 relative">
+                                                <img 
+                                                    src={imageUrl} 
+                                                    alt={item.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <span className={`absolute top-0 left-0 px-2 py-0.5 text-xs text-white ${item.status === 'ACTIVE' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+                                                    {item.status || 'ACTIVE'}
+                                                </span>
                                             </div>
-                                            <div className="flex justify-end space-x-2">
-                                                <Link href={`/listings/${item.id}`} target="_blank">
-                                                    <Button size="sm" variant="ghost" className="h-7 px-2"><Eye className="w-3 h-3" /></Button>
-                                                </Link>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    className="h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                                                    onClick={() => {
-                                                        setEditingProperty(item);
-                                                        setActiveTab('ADD');
-                                                    }}
-                                                >
-                                                    <Edit className="w-3 h-3" />
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="destructive" 
-                                                    className="h-7 px-2"
-                                                    onClick={() => handleDelete(item.id)}
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                            <CardContent className="flex-1 p-3 flex flex-col justify-between">
+                                                <div>
+                                                    <h3 className="font-bold text-sm line-clamp-1">{item.title}</h3>
+                                                    <p className="text-xs text-gray-500">{item.category} • {item.type}</p>
+                                                    <p className="text-red-600 font-bold text-sm">฿{Number(item.price).toLocaleString()}</p>
+                                                </div>
+                                                <div className="flex justify-end space-x-2">
+                                                    <Link href={`/property/${item.id}`} target="_blank">
+                                                        <Button size="sm" variant="ghost" className="h-7 px-2"><Eye className="w-3 h-3" /></Button>
+                                                    </Link>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                        onClick={() => {
+                                                            setEditingProperty(item);
+                                                            setActiveTab('ADD');
+                                                        }}
+                                                    >
+                                                        <Edit className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="destructive" 
+                                                        className="h-7 px-2"
+                                                        onClick={() => handleDelete(item.id)}
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
                 ) : activeTab === 'INQUIRIES' ? (
                     <div className="space-y-6">
+                        {/* ส่วน Inquiry โค้ดเดิม */}
                         {isLoadingInquiries ? (
                             <div className="text-center py-12">กำลังโหลดข้อความ...</div>
                         ) : inquiries.length === 0 ? (
@@ -225,9 +253,6 @@ export default function UserDashboardPage() {
                                                     <User className="w-5 h-5 text-blue-500" />
                                                     {inquiry.sender_name}
                                                 </CardTitle>
-                                                <span className="text-xs text-gray-400">
-                                                    {new Date(inquiry.createdAt).toLocaleString('th-TH')}
-                                                </span>
                                             </div>
                                             <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                                                 สนใจ: {inquiry.property_title || 'ไม่ระบุชื่อทรัพย์'}
@@ -240,14 +265,12 @@ export default function UserDashboardPage() {
                                             <div className="flex flex-wrap gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
                                                 {inquiry.sender_tel && (
                                                     <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                                                        <Phone className="w-4 h-4 text-emerald-500" />
-                                                        {inquiry.sender_tel}
+                                                        <Phone className="w-4 h-4 text-emerald-500" /> {inquiry.sender_tel}
                                                     </div>
                                                 )}
                                                 {inquiry.sender_email && (
                                                     <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                                                        <Mail className="w-4 h-4 text-orange-500" />
-                                                        {inquiry.sender_email}
+                                                        <Mail className="w-4 h-4 text-orange-500" /> {inquiry.sender_email}
                                                     </div>
                                                 )}
                                             </div>
@@ -258,19 +281,18 @@ export default function UserDashboardPage() {
                         )}
                     </div>
                 ) : (
-                    // หน้าลงประกาศ / แก้ไข
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <Button 
                             variant="ghost" 
                             onClick={() => {
                                 setEditingProperty(null);
                                 setActiveTab('LIST');
+                                fetchProperties(); // โหลดใหม่ตอนกดยกเลิกเผื่อมีการแก้
                             }} 
                             className="mb-4 text-gray-500"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" /> ยกเลิก / กลับไปหน้ารายการ
                         </Button>
-                        
                         <AddListingForm property={editingProperty} isEdit={!!editingProperty} />
                     </div>
                 )}
@@ -283,49 +305,21 @@ export default function UserDashboardPage() {
     // -------------------------------------------------------
     return (
         <div className="container mx-auto p-4 md:py-8 max-w-4xl">
-            
-            {/* 📢 แสดงประกาศและสิทธิพิเศษจากแอดมิน */}
             <AnnouncementBanner />
-            
             <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
-                สมัครเป็นผู้ขาย
+                อัปเกรดเป็นผู้ขาย
             </h1>
-
-            {verificationStatus === 'PENDING' && (
-                <div className="text-center p-10 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg max-w-lg mx-auto space-y-3">
-                    <Clock className="w-10 h-10 mx-auto text-yellow-600" />
-                    <h2 className="text-xl font-bold text-yellow-800 dark:text-yellow-300">
-                        คำขอของคุณอยู่ในระหว่างการตรวจสอบ
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        แอดมินกำลังดำเนินการตรวจสอบเอกสาร กรุณารอการแจ้งเตือน
+            <div className="space-y-6">
+                <p className="text-gray-600 dark:text-gray-300">
+                    เพื่อเริ่มต้นใช้งานระบบผู้ขายและลงประกาศอสังหาริมทรัพย์ กรุณาอัปเกรดบัญชีของคุณ
+                </p>
+                <div className="p-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                    <p className="text-blue-800 dark:text-blue-300 font-medium text-center">
+                        ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา <br/>
+                        *กรุณาติดต่อผู้ดูแลระบบ (Admin) เพื่อขอสิทธิ์ผู้ขาย
                     </p>
                 </div>
-            )}
-
-            {verificationStatus === 'REJECTED' && (
-                <div className="space-y-6">
-                     <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg max-w-lg mx-auto space-y-2">
-                        <XCircle className="w-8 h-8 mx-auto text-red-600" />
-                        <h2 className="text-lg font-bold text-red-800 dark:text-red-300">
-                            คำขอยืนยันตัวตนถูกปฏิเสธ
-                        </h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            กรุณาส่งเอกสารใหม่ให้ถูกต้อง
-                        </p>
-                    </div>
-                    <VerificationForm />
-                </div>
-            )}
-
-            {verificationStatus === 'IDLE' && (
-                <div className="space-y-6">
-                    <p className="text-gray-600 dark:text-gray-300">
-                        เพื่อเริ่มต้นใช้งานระบบผู้ขายและลงประกาศอสังหาริมทรัพย์ กรุณายืนยันตัวตน:
-                    </p>
-                    <VerificationForm />
-                </div>
-            )}
+            </div>
         </div>
     );
 }

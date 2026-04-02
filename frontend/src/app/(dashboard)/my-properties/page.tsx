@@ -8,23 +8,28 @@ import { useFavoriteStore } from '@/stores/useFavoriteStore'
 import { PropertyCard } from '@/components/PropertyCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, ListTodo, Heart, Building2, LayoutDashboard } from 'lucide-react'
-import { Property } from '@/lib/types'
+import { Heart, LayoutDashboard } from 'lucide-react'
 
 export default function MyPropertiesPage() {
-    const { properties, fetchProperties } = usePropertyStore()
-    const { favoriteIds } = useFavoriteStore()
-    const currentUser = useAuthStore((state) => state.currentUser)
-    const role = currentUser?.role
-    const userId = currentUser?.id
+    const properties = usePropertyStore((state) => state.properties)
+    const fetchProperties = usePropertyStore((state) => state.fetchProperties)
+    
+    // ป้องกัน Error ถ้า favoriteStore ยังเป็นของเก่า
+    const favoriteIds = useFavoriteStore((state) => state.favoriteIds || new Set()) 
+    
+    // 🟢 เปลี่ยนจาก currentUser เป็น user ให้ตรงกับของจริง
+    const user = useAuthStore((state) => state.user)
+    const role = user?.role
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        fetchProperties().then(() => setIsLoading(false))
+        // ใช้ .finally เพื่อให้มั่นใจว่าโหลดเสร็จแล้วค่อยปิดวงล้อโหลด
+        fetchProperties().finally(() => setIsLoading(false))
     }, [fetchProperties])
 
     const displayProperties = useMemo(() => {
-        return properties.filter(p => favoriteIds.has(p.id))
+        // แปลง id ให้เป็น string เพื่อให้เปรียบเทียบกันได้ชัวร์ๆ
+        return properties.filter(p => favoriteIds.has(String(p.id)) || favoriteIds.has(Number(p.id)))
     }, [properties, favoriteIds])
 
     const isSeller = role === 'SELLER' || role === 'ADMIN'
@@ -93,19 +98,17 @@ export default function MyPropertiesPage() {
                         <p className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-4">
                             คุณยังไม่มีรายการโปรด
                         </p>
-                        <Link href="/">
+                        <Link href="/buy">
                             <Button className="bg-blue-600 hover:bg-blue-700">
                                 ไปหาบ้านที่ถูกใจกัน!
                             </Button>
                         </Link>
                     </div>
                 ) : (
-                    <div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {displayProperties.map((property) => (
-                                <PropertyCard key={property.id} property={property} />
-                            ))}
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {displayProperties.map((property) => (
+                            <PropertyCard key={property.id} property={property} />
+                        ))}
                     </div>
                 )}
             </div>
