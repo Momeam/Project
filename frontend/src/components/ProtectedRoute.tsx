@@ -2,53 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore, UserRole } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  allowedRoles: UserRole[]; // รับค่าบทบาทที่อนุญาตให้เข้าได้
+    children: React.ReactNode;
+    allowedRoles?: string[];
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
-  
-  // ดึงข้อมูลผู้ใช้จาก Store
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const currentUser = useAuthStore((state) => state.currentUser);
-  const userRole = currentUser?.role;
+    const router = useRouter();
+    // 🟢 เปลี่ยนมาใช้ของจริง
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const user = useAuthStore((state) => state.user);
+    const [isChecking, setIsChecking] = useState(true);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.push('/login');
+        } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+            router.push('/'); // ถ้าสิทธิ์ไม่ถึง ให้เด้งกลับหน้าแรก
+        } else {
+            setIsChecking(false);
+        }
+    }, [isAuthenticated, user, allowedRoles, router]);
 
-  useEffect(() => {
-    if (!isMounted || !userRole) return;
-
-    // 1. ถ้ายังไม่ล็อกอิน -> ดีดไปหน้า Login
-    if (!isLoggedIn) {
-      router.replace('/login');
-      return;
+    if (isChecking) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
+            </div>
+        );
     }
 
-    // 2. ถ้าล็อกอินแล้ว แต่ Role ไม่ตรงกับที่อนุญาต -> ดีดไปหน้าแรก (หรือหน้า Dashboard ของตัวเอง)
-    if (!allowedRoles.includes(userRole)) {
-      // Logic การดีดกลับตาม Role ที่เป็นอยู่
-      if (userRole === 'ADMIN') {
-         router.replace('/admin/users');
-      } else if (userRole === 'SELLER') {
-         router.replace('/user/dashboard');
-      } else {
-         router.replace('/');
-      }
-    }
-  }, [isLoggedIn, userRole, allowedRoles, router, isMounted]);
-
-  // ถ้ายังโหลดไม่เสร็จ หรือ สิทธิ์ไม่ผ่าน ไม่ต้องแสดงเนื้อหา
-  if (!isMounted || !isLoggedIn || !userRole || !allowedRoles.includes(userRole)) {
-    return null; // หรือใส่ Loading Spinner
-  }
-
-  // ถ้าผ่านทุกด่าน ให้แสดงเนื้อหา
-  return <>{children}</>;
+    return <>{children}</>;
 }

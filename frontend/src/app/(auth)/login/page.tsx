@@ -16,7 +16,9 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
-    const loginSuccess = useAuthStore((state) => state.loginSuccess);
+    // 🟢 เรียกใช้ login จาก useAuthStore ตัวใหม่
+    const login = useAuthStore((state) => state.login);
+
     const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement> | React.FormEvent) => {
         e.preventDefault(); 
         setError('');
@@ -24,6 +26,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
+            // 🟢 ยิง API ไปหา Database จริง (พอร์ต 5000)
             const response = await fetch('http://localhost:5000/api/users/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -35,7 +38,8 @@ export default function LoginPage() {
             if (response.ok) {
                 setSuccessMsg('เข้าสู่ระบบสำเร็จ! กำลังพาท่านไป...');
                 
-                loginSuccess(data.user, data.token);
+                // 🟢 บันทึกข้อมูลลง Store ตัวใหม่
+                login(data.user);
 
                 const userRole = data.user.role; 
 
@@ -70,7 +74,6 @@ export default function LoginPage() {
                     alt="Premium Property" 
                     style={{ animationDuration: '30s' }}
                 />
-                {/* Gradients to make text readable and blend edges */}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-500/20 via-transparent to-transparent"></div>
                 
@@ -90,8 +93,6 @@ export default function LoginPage() {
 
             {/* 🌟 Right Side: Form Content 🌟 */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 relative">
-                
-                {/* Mobile Background Overlay */}
                 <div className="lg:hidden absolute inset-0 z-0">
                     <img 
                         src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop" 

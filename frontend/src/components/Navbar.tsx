@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Building2, LayoutDashboard, Settings, UserPlus, ChevronDown } from 'lucide-react';
 import {
@@ -23,17 +22,14 @@ export default function Navbar() {
     const pathname = usePathname();
     const router = useRouter();
     
-    const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-    const currentUser = useAuthStore((state) => state.currentUser);
+    // 🟢 เปลี่ยนชื่อตัวแปรให้ตรงกับ useAuthStore
+    const isLoggedIn = useAuthStore((state) => state.isAuthenticated);
+    const currentUser = useAuthStore((state) => state.user);
     const role = currentUser?.role;
     const logout = useAuthStore((state) => state.logout);
-    const fetchFavorites = useFavoriteStore((state) => state.fetchFavorites);
 
     useEffect(() => {
         setIsMounted(true);
-        if (isLoggedIn) {
-            fetchFavorites();
-        }
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
