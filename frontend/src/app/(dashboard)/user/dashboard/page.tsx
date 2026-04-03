@@ -16,32 +16,30 @@ export default function UserDashboardPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [editingProperty, setEditingProperty] = useState<any>(null);
     
-    // 🟢 1. เปลี่ยนมาใช้ `user` ให้ตรงกับ Store ของจริง
+    // ดึงข้อมูล User จาก Store
     const user = useAuthStore((state) => state.user);
     const userId = user?.id;
     const role = user?.role;
     
     const justUpgraded = useAuthStore((state) => state.justUpgraded); 
-    const setJustUpgraded = useAuthStore((state) => state.setJustUpgraded); 
-    const verificationStatus = 'IDLE'; // ชั่วคราว: เพราะใน DB จริงเรายังไม่มีคอลัมน์เก็บสถานะเอกสาร
+    
 
     const { inquiries, fetchInquiries, isLoading: isLoadingInquiries } = useInquiryStore();
 
-    // 🟢 2. ดึงข้อมูล Property จาก API จริง
+    // ดึงข้อมูล Property จาก API จริง
     const allListings = usePropertyStore((state) => state.properties);
     const fetchProperties = usePropertyStore((state) => state.fetchProperties);
 
     useEffect(() => {
         setIsMounted(true);
-        // สั่งให้ดึงข้อมูลบ้านจาก Database ใหม่ทุกครั้งที่เปิดหน้านี้
         fetchProperties();
         
-        if (role === 'SELLER') {
+        if (role === 'SELLER' || role === 'ADMIN') {
             fetchInquiries();
         }
     }, [role, fetchProperties, fetchInquiries]);
 
-    // 🟢 3. กรองเอาเฉพาะประกาศที่ userId ตรงกับคนที่ล็อกอินอยู่
+    // กรองเอาเฉพาะประกาศที่ userId ตรงกับคนที่ล็อกอินอยู่
     const myListings = useMemo(() => {
         if (!userId) return [];
         return allListings.filter(p => String(p.userId) === String(userId));
@@ -49,7 +47,7 @@ export default function UserDashboardPage() {
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');
 
-    // 🟢 4. ระบบลบประกาศ ยิง API ตัวจริงไปที่พอร์ต 5000
+    // ระบบลบประกาศ 
     const handleDelete = async (id: string) => {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้? 🗑️")) {
             try {
@@ -59,7 +57,7 @@ export default function UserDashboardPage() {
 
                 if (response.ok) {
                     alert('ลบประกาศออกจากฐานข้อมูลสำเร็จ! ✅');
-                    fetchProperties(); // โหลดข้อมูลใหม่มาแสดงทันที
+                    fetchProperties(); 
                 } else {
                     const data = await response.json();
                     alert(`ไม่สามารถลบได้: ${data.error}`);
@@ -116,11 +114,11 @@ export default function UserDashboardPage() {
                         </p>
 
                         <Button 
-                            onClick={() => setJustUpgraded(false)} 
-                            className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
-                        >
-                            เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
-                        </Button>
+    onClick={() => useAuthStore.setState({ justUpgraded: false })} 
+    className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
+>
+    เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
+</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -179,7 +177,6 @@ export default function UserDashboardPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {myListings.map((item) => {
-                                    // 🟢 5. เช็กรูปภาพให้ปลอดภัย เผื่อ Database ยังไม่มีรูป
                                     const imageUrl = item.images && item.images.length > 0 
                                         ? (item.images[0].url || item.images[0]) 
                                         : 'https://placehold.co/150?text=No+Img';
@@ -203,7 +200,7 @@ export default function UserDashboardPage() {
                                                     <p className="text-red-600 font-bold text-sm">฿{Number(item.price).toLocaleString()}</p>
                                                 </div>
                                                 <div className="flex justify-end space-x-2">
-                                                    <Link href={`/property/${item.id}`} target="_blank">
+                                                    <Link href={`/listings/${item.id}`} target="_blank">
                                                         <Button size="sm" variant="ghost" className="h-7 px-2"><Eye className="w-3 h-3" /></Button>
                                                     </Link>
                                                     <Button 
@@ -235,7 +232,6 @@ export default function UserDashboardPage() {
                     </div>
                 ) : activeTab === 'INQUIRIES' ? (
                     <div className="space-y-6">
-                        {/* ส่วน Inquiry โค้ดเดิม */}
                         {isLoadingInquiries ? (
                             <div className="text-center py-12">กำลังโหลดข้อความ...</div>
                         ) : inquiries.length === 0 ? (
@@ -287,7 +283,7 @@ export default function UserDashboardPage() {
                             onClick={() => {
                                 setEditingProperty(null);
                                 setActiveTab('LIST');
-                                fetchProperties(); // โหลดใหม่ตอนกดยกเลิกเผื่อมีการแก้
+                                fetchProperties(); 
                             }} 
                             className="mb-4 text-gray-500"
                         >
@@ -306,19 +302,10 @@ export default function UserDashboardPage() {
     return (
         <div className="container mx-auto p-4 md:py-8 max-w-4xl">
             <AnnouncementBanner />
-            <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
-                อัปเกรดเป็นผู้ขาย
-            </h1>
-            <div className="space-y-6">
-                <p className="text-gray-600 dark:text-gray-300">
-                    เพื่อเริ่มต้นใช้งานระบบผู้ขายและลงประกาศอสังหาริมทรัพย์ กรุณาอัปเกรดบัญชีของคุณ
-                </p>
-                <div className="p-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                    <p className="text-blue-800 dark:text-blue-300 font-medium text-center">
-                        ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา <br/>
-                        *กรุณาติดต่อผู้ดูแลระบบ (Admin) เพื่อขอสิทธิ์ผู้ขาย
-                    </p>
-                </div>
+            
+            {/* 🟢 เรียกใช้ VerificationForm ที่เราเพิ่งเขียนเสร็จ! */}
+            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <VerificationForm />
             </div>
         </div>
     );

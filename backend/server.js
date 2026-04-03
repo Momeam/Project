@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const nodemailer = require('nodemailer'); // 🟢 ย้ายมาไว้ข้างบนสุดให้เป็นระเบียบ
 require('dotenv').config();
 
 // Connect to DB and create tables if not exists
@@ -28,6 +29,78 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 // Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+
+// ==========================================================
+// 🟢 ส่วนระบบ OTP (ต้องวางไว้ตรงนี้ ก่อนตัวดัก 404)
+// ==========================================================
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'memza007@gmail.com', // อีเมลของคุณ
+        pass: 'uvbq ohpx sdpf vass'  // รหัสผ่านแอป
+    }
+});
+
+let otpStore = {}; 
+
+app.post('/api/otp/send-email', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'กรุณาระบุอีเมล' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore[email] = { otp: otp, expires: Date.now() + 5 * 60 * 1000 };
+
+    const mailOptions = {
+        from: '"HomeLink Verification" <memza007@gmail.com>', 
+        to: email, 
+        subject: 'รหัส OTP ยืนยันตัวตนผู้ขาย - HomeLink',
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px;">
+                <h2 style="color: #2563eb; text-align: center;">ยินดีต้อนรับสู่ HomeLink!</h2>
+                <p style="text-align: center; color: #4b5563;">รหัส OTP สำหรับยืนยันตัวตนของคุณคือ:</p>
+                <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #111827;">${otp}</span>
+                </div>
+                <p style="color: #ef4444; font-size: 12px; text-align: center;">* รหัสนี้จะหมดอายุภายใน 5 นาที</p>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: 'ส่ง OTP เข้าอีเมลเรียบร้อย!' });
+    } catch (error) {
+        console.error('Nodemailer Error:', error);
+        res.status(500).json({ error: 'ไม่สามารถส่งอีเมลได้ (โปรดเช็ค App Password)' });
+    }
+});
+
+app.put('/api/users/upgrade/:id', async (req, res) => {
+    const { id } = req.params;
+    const { otp, email, tel, realName } = req.body;
+
+    const record = otpStore[email];
+    
+    if (!record) return res.status(400).json({ error: 'ไม่พบคำขอ OTP หรือรหัสหมดอายุแล้ว' });
+    if (record.otp !== otp) return res.status(400).json({ error: 'รหัส OTP ไม่ถูกต้อง!' });
+    if (Date.now() > record.expires) return res.status(400).json({ error: 'รหัส OTP หมดอายุแล้ว!' });
+
+    try {
+        const { pool } = require('./config/db'); // ดึง pool มาใช้ตรงนี้เพื่อความชัวร์
+        const result = await pool.query(
+            'UPDATE users SET role = $1, tel = $2, username = $3 WHERE id = $4 RETURNING id, email, username, role, tel',
+            ['SELLER', tel, realName, id]
+        );
+        delete otpStore[email];
+        res.json({ success: true, user: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// ==========================================================
+
+
+// 🔴 ยามเฝ้าประตู 404 (ต้องอยู่ "ล่างสุด" เสมอครับ!)
 app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint Not Found' });
 });
