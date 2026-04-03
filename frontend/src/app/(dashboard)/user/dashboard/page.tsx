@@ -17,9 +17,10 @@ export default function UserDashboardPage() {
     const [editingProperty, setEditingProperty] = useState<any>(null);
     
     // ดึงข้อมูล User จาก Store
-    const user = useAuthStore((state) => state.user);
-    const userId = user?.id;
-    const role = user?.role;
+    const currentUser = useAuthStore((state) => state.currentUser);
+    const userId = currentUser?.id;
+    const role = currentUser?.role;
+
     
     const justUpgraded = useAuthStore((state) => state.justUpgraded); 
     

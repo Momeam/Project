@@ -12,7 +12,8 @@ export function NotificationBell() {
   const [isMounted, setIsMounted] = useState(false);
 
   // 2. 🟢 ดึงข้อมูลผู้ใช้ที่ล็อกอินอยู่
-  const currentUserEmail = useAuthStore((state) => state.email);
+  const currentUserEmail = useAuthStore((state) => state.currentUser?.email);
+
 
   // 3. 🟢 ดึง State และ Actions จาก "กล่องจดหมาย"
   const notifications = useNotificationStore((state) => state.notifications);

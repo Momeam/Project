@@ -29,7 +29,7 @@ interface AddListingFormProps {
 export default function AddListingForm({ property, isEdit = false }: AddListingFormProps) {
     const router = useRouter();
     // 🟢 ดึงข้อมูลผู้ใช้จาก Store ของจริง
-    const currentUser = useAuthStore((state) => state.user); 
+    const currentUser = useAuthStore((state) => state.currentUser); 
     const [isLoading, setIsLoading] = useState(false);
 
     const [formData, setFormData] = useState<FormDataState>({

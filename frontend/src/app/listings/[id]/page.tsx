@@ -38,10 +38,10 @@ export default function ListingDetailPage() {
     const deleteProperty = usePropertyStore((state) => state.deleteProperty); 
     
     // เซฟการดึงค่า favorite
-    const favoriteIds = useFavoriteStore((state) => state.favoriteIds || new Set());
+    const favoriteIds = useFavoriteStore((state) => state.favoriteIds || []);
     const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
     
-    const user = useAuthStore((state) => state.user); 
+    const user = useAuthStore((state) => state.currentUser); 
     
     // ดึงข้อมูลประกาศ
     const storeProperty = typeof getPropertyById === 'function' ? getPropertyById(id) : null;
@@ -185,10 +185,10 @@ export default function ListingDetailPage() {
                         </Button>
                         <Button 
                             variant="outline" size="icon" 
-                            className={`rounded-full transition-all ${favoriteIds.has(property.id) ? 'bg-rose-50 border-rose-200 text-rose-500' : ''}`}
+                            className={`rounded-full transition-all ${favoriteIds.includes(String(property.id)) ? 'bg-rose-50 border-rose-200 text-rose-500' : ''}`}
                             onClick={() => typeof toggleFavorite === 'function' && toggleFavorite(property.id)}
                         >
-                            <Heart className={`w-4 h-4 ${favoriteIds.has(property.id) ? 'fill-rose-500' : ''}`} />
+                            <Heart className={`w-4 h-4 ${favoriteIds.includes(String(property.id)) ? 'fill-rose-500' : ''}`} />
                         </Button>
                     </div>
                 </div>

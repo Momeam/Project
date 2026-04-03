@@ -83,6 +83,7 @@ const AllListingsManager = () => {
     const currentUser = useAuthStore((state) => state.currentUser);
     const userId = currentUser?.id;
     const role = currentUser?.role;
+    const title = role === 'ADMIN' ? 'Admin Dashboard' : role === 'SELLER' ? 'Partner Dashboard' : 'User Home';
     
     const handleDelete = (id: string) => {
         if (confirm('คุณ (Admin) แน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {

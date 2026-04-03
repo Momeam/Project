@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore'; 
+import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -39,7 +40,10 @@ export default function LoginPage() {
                 setSuccessMsg('เข้าสู่ระบบสำเร็จ! กำลังพาท่านไป...');
                 
                 // 🟢 บันทึกข้อมูลลง Store ตัวใหม่
-                login(data.user);
+                login(data.user, data.token);
+                
+                // โหลดรายการโปรดทันทีหลัง login
+                useFavoriteStore.getState().fetchFavorites();
 
                 const userRole = data.user.role; 
 

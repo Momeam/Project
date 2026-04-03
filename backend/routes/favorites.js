@@ -3,11 +3,11 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 
-// [POST] เพิ่มเข้ารายการโปรด
-router.post('/', async (req, res) => {
+// [POST] เพิ่มเข้ารายการโปรด (ต้อง Login)
+router.post('/', verifyToken, async (req, res) => {
     try {
         const { property_id } = req.body;
-        const user_id = req.user ? req.user.id : 'anonymous'; // 🟢 ตัดเรื่อง Token ออก
+        const user_id = req.user.id;
 
         const check = await pool.query('SELECT * FROM Favorites WHERE user_id = $1 AND property_id = $2', [user_id, property_id]);
         if (check.rows.length > 0) return res.status(400).json({ error: 'รายการนี้ถูกบันทึกไปแล้ว' });
@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [GET] List favorites
+// [GET] List favorites (ต้อง Login)
 router.get('/', verifyToken, async (req, res) => {
     try {
         const result = await pool.query(`
@@ -31,11 +31,11 @@ router.get('/', verifyToken, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [DELETE] ลบออกจากรายการโปรด
-router.delete('/:propertyId', async (req, res) => {
+// [DELETE] ลบออกจากรายการโปรด (ต้อง Login)
+router.delete('/:propertyId', verifyToken, async (req, res) => {
     try {
         const { propertyId } = req.params;
-        const user_id = req.user ? req.user.id : 'anonymous'; // 🟢 ตัดเรื่อง Token ออก
+        const user_id = req.user.id;
         
         await pool.query('DELETE FROM Favorites WHERE user_id = $1 AND property_id = $2', [user_id, propertyId]);
         res.status(200).json({ message: 'ลบสำเร็จ' });

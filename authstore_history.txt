@@ -1,0 +1,989 @@
+﻿commit 74205fbc1304f3918fe3525537f8e972f848902f
+Author: Momeam <memza007@gmail.com>
+Date:   Fri Apr 3 00:01:31 2026 +0700
+
+    α╕êα╕▒α╕öα╕üα╕▓α╕úα╣üα╕üα╣ëα╣äα╕éα╣éα╕äα╣ëα╕öα╣âα╕Öα╕¬α╣êα╕ºα╕Öα╕éα╕¡α╕çα╕½α╕Öα╣ëα╕▓ frontend α╣üα╕üα╣ëα╣äα╕éα╣âα╕½α╣ëα╣Çα╕¢α╣çα╕Öα╕úα╕░α╣Çα╕Üα╕╡α╕óα╕Üα╕öα╕╢α╕ç api  α╣âα╕½α╣ëα╕íα╕▓α╣âα╕èα╣ëα╣äα╕öα╣ëα╕êα╕úα╕┤α╕çα╣å
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index c16bf51..6d3f82f 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -1,257 +1,23 @@
+ import { create } from 'zustand';
+ import { persist } from 'zustand/middleware';
+-import { useFavoriteStore } from './useFavoriteStore';
+-
+-// --- Types ---
+-export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+-export type UserRole = 'USER' | 'SELLER' | 'ADMIN';
+-
+-export interface User {
+-    id: string | number;
+-    username: string;
+-    email: string;
+-    role: UserRole;
+-    tel?: string;
+-    full_name?: string;
+-    id_card_number?: string;
+-    line_id?: string;
+-    verificationStatus?: VerificationStatus;
+-}
+ 
+ interface AuthState {
+-    isLoggedIn: boolean;
+-    currentUser: User | null;
+-    token: string | null;
+-    usersList: User[];
+-    justUpgraded: boolean;
+-    
+-    loginSuccess: (user: User, token: string) => void; 
++    user: any | null; // α╣Çα╕üα╣çα╕Üα╕éα╣ëα╕¡α╕íα╕╣α╕Ñ User α╕êα╕▓α╕ü Database α╕êα╕úα╕┤α╕çα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Ö
++    isAuthenticated: boolean;
++    login: (userData: any) => void;
+     logout: () => void;
+-    updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
+-    setJustUpgraded: (val: boolean) => void;
+-    
+-    fetchUsers: () => Promise<void>;
+-    updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
+-    deleteUser: (userId: string | number) => Promise<void>;
+-    approveUserVerification: (userId: string | number) => Promise<void>;
+-    rejectUserVerification: (userId: string | number) => Promise<void>;
+-    
+-    requestOtp: (tel: string) => Promise<string | null>;
+-    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
+-    updateProfile: (profileData: { username?: string; tel?: string; line_id?: string }) => Promise<{ success: boolean; error?: string }>;
+-    changePassword: (passwordData: { oldPassword: string; newPassword: string }) => Promise<{ success: boolean; error?: string }>;
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+     persist(
+-        (set, get) => ({
+-            isLoggedIn: false,
+-            currentUser: null,
+-            token: null,
+-            usersList: [],
+-            justUpgraded: false,
+-
+-            loginSuccess: (user, token) => {
+-                localStorage.setItem('token', token); // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕íα╕üα╕▓α╕úα╕Üα╕▒α╕Öα╕ùα╕╢α╕ü Token
+-                set({ 
+-                    isLoggedIn: true, 
+-                    currentUser: user,
+-                    token
+-                });
+-                // Fetch favorites after successful login
+-                useFavoriteStore.getState().fetchFavorites();
+-            },
+-
+-            logout: () => {
+-                localStorage.removeItem('token'); // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕íα╕üα╕▓α╕úα╕Ñα╕Ü Token
+-                set({ 
+-                    isLoggedIn: false, 
+-                    currentUser: null,
+-                    token: null
+-                });
+-                // Clear favorites on logout
+-                useFavoriteStore.getState().clearFavorites();
+-            },
+-
+-            updateProfileDisplay: (updates) => {
+-                set((state) => ({
+-                    currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null
+-                }));
+-            },
+-
+-            setJustUpgraded: (val) => set({ justUpgraded: val }),
+-
+-            fetchUsers: async () => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch('http://localhost:5000/api/users', {
+-                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+-                    });
+-                    const data = await response.json();
+-                    if (!response.ok) {
+-                        console.warn('Fetch users failed:', data.error);
+-                        set({ usersList: [] });
+-                        return;
+-                    }
+-                    set({ usersList: Array.isArray(data) ? data : [] });
+-                } catch (error) {
+-                    console.error('Fetch users error:', error);
+-                    set({ usersList: [] }); // prevents crash if unauthorized
+-                }
+-            },
+-
+-            updateUserRole: async (userId, role) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
+-                        method: 'PUT',
+-                        headers: { 
+-                            'Content-Type': 'application/json',
+-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+-                        },
+-                        body: JSON.stringify({ role })
+-                    });
+-                    if (response.ok) {
+-                        const { user } = await response.json();
+-                        set((state) => ({
+-                            usersList: state.usersList.map(u => u.id === userId ? { ...u, role: user.role } : u)
+-                        }));
+-                    }
+-                } catch (error) {
+-                    console.error('Update user role error:', error);
+-                }
+-            },
+-
+-            deleteUser: async (userId) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+-                        method: 'DELETE',
+-                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+-                    });
+-                    if (response.ok) {
+-                        set((state) => ({
+-                            usersList: state.usersList.filter(u => u.id !== userId)
+-                        }));
+-                    }
+-                } catch (error) {
+-                    console.error('Delete user error:', error);
+-                }
+-            },
+-
+-            approveUserVerification: async (userId) => {
+-                await get().updateUserRole(userId, 'SELLER');
+-                set((state) => ({
+-                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'APPROVED' } : u)
+-                }));
+-            },
+-
+-            rejectUserVerification: async (userId) => {
+-                set((state) => ({
+-                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'REJECTED' } : u)
+-                }));
+-            },
+-
+-            requestOtp: async (tel) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch('http://localhost:5000/api/users/request-otp', {
+-                        method: 'POST',
+-                        headers: { 
+-                            'Content-Type': 'application/json',
+-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+-                        },
+-                        body: JSON.stringify({ tel })
+-                    });
+-                    const data = await response.json();
+-                    if (response.ok) {
+-                        return data.otp; 
+-                    }
+-                    return null;
+-                } catch (error) {
+-                    console.error('Request OTP error:', error);
+-                    return null;
+-                }
+-            },
+-
+-            verifyOtp: async (tel, otp, sellerData) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch('http://localhost:5000/api/users/verify-otp', {
+-                        method: 'POST',
+-                        headers: { 
+-                            'Content-Type': 'application/json',
+-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+-                        },
+-                        body: JSON.stringify({ tel, otp, ...sellerData })
+-                    });
+-                    const data = await response.json();
+-                    if (response.ok) {
+-                        const currentUser = get().currentUser;
+-                        if (currentUser && currentUser.id === data.user.id) {
+-                            set({ 
+-                                currentUser: { ...currentUser, ...data.user },
+-                                justUpgraded: true
+-                            });
+-                        }
+-                        return { success: true };
+-                    }
+-                    return { success: false, error: data.error || 'α╣Çα╕üα╕┤α╕öα╕éα╣ëα╕¡α╕£α╕┤α╕öα╕₧α╕Ñα╕▓α╕ö' };
+-                } catch (error) {
+-                    console.error('Verify OTP error:', error);
+-                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë α╕üα╕úα╕╕α╕ôα╕▓α╕òα╕úα╕ºα╕êα╕¬α╕¡α╕Üα╕ºα╣êα╕▓ Server α╣Çα╕¢α╕┤α╕öα╕¡α╕óα╕╣α╣ê' };
+-                }
+-            },
+-
+-            updateProfile: async (profileData) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch('http://localhost:5000/api/users/me', {
+-                        method: 'PUT',
+-                        headers: { 
+-                            'Content-Type': 'application/json',
+-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+-                        },
+-                        body: JSON.stringify(profileData)
+-                    });
+-                    const data = await response.json();
+-                    if (response.ok) {
+-                        set((state) => ({
+-                            currentUser: state.currentUser ? { ...state.currentUser, ...data.user } : null
+-                        }));
+-                        return { success: true };
+-                    }
+-                    return { success: false, error: data.error || 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╕¡α╕▒α╕¢α╣Çα╕öα╕òα╕éα╣ëα╕¡α╕íα╕╣α╕Ñα╣äα╕öα╣ë' };
+-                } catch (error) {
+-                    console.error('Update profile error:', error);
+-                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë' };
+-                }
+-            },
+-
+-            changePassword: async (passwordData) => {
+-                try {
+-                    const token = get().token;
+-                    const response = await fetch('http://localhost:5000/api/users/change-password', {
+-                        method: 'PUT',
+-                        headers: { 
+-                            'Content-Type': 'application/json',
+-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+-                        },
+-                        body: JSON.stringify(passwordData)
+-                    });
+-                    const data = await response.json();
+-                    if (response.ok) {
+-                        return { success: true };
+-                    }
+-                    return { success: false, error: data.error || 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕¢α╕Ñα╕╡α╣êα╕óα╕Öα╕úα╕½α╕▒α╕¬α╕£α╣êα╕▓α╕Öα╣äα╕öα╣ë' };
+-                } catch (error) {
+-                    console.error('Change password error:', error);
+-                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë' };
+-                }
+-            },
++        (set) => ({
++            user: null,
++            isAuthenticated: false,
++            login: (userData) => set({ user: userData, isAuthenticated: true }),
++            logout: () => set({ user: null, isAuthenticated: false }),
+         }),
+-        { 
+-            name: 'auth-storage', 
++        {
++            name: 'auth-storage', // α╕Üα╕▒α╕Öα╕ùα╕╢α╕üα╕üα╕▓α╕úα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕Ñα╕ç LocalStorage α╕êα╕░α╣äα╕öα╣ëα╣äα╕íα╣êα╕òα╣ëα╕¡α╕çα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╣âα╕½α╕íα╣êα╣Çα╕ºα╕Ñα╕▓α╕úα╕╡α╣Çα╕ƒα╕úα╕è
+         }
+     )
+ );
+\ No newline at end of file
+
+commit 06e180f43441c9dac9e35beff59d5f41f78a625b
+Author: foolk2548-lgtm <foolk2548@gmail.com>
+Date:   Wed Apr 1 16:50:14 2026 +0700
+
+    α╕üα╕öα╣âα╕ê
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index 70f86c1..c16bf51 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -1,5 +1,6 @@
+ import { create } from 'zustand';
+ import { persist } from 'zustand/middleware';
++import { useFavoriteStore } from './useFavoriteStore';
+ 
+ // --- Types ---
+ export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+@@ -51,19 +52,25 @@ export const useAuthStore = create<AuthState>()(
+             justUpgraded: false,
+ 
+             loginSuccess: (user, token) => {
++                localStorage.setItem('token', token); // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕íα╕üα╕▓α╕úα╕Üα╕▒α╕Öα╕ùα╕╢α╕ü Token
+                 set({ 
+                     isLoggedIn: true, 
+                     currentUser: user,
+                     token
+                 });
++                // Fetch favorites after successful login
++                useFavoriteStore.getState().fetchFavorites();
+             },
+ 
+             logout: () => {
++                localStorage.removeItem('token'); // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕íα╕üα╕▓α╕úα╕Ñα╕Ü Token
+                 set({ 
+                     isLoggedIn: false, 
+                     currentUser: null,
+                     token: null
+                 });
++                // Clear favorites on logout
++                useFavoriteStore.getState().clearFavorites();
+             },
+ 
+             updateProfileDisplay: (updates) => {
+
+commit dd54c8a322d5bea16b679c1a6465c5428c80a6e0
+Author: Kawin-Guiy <kawin.sup@spumail.net>
+Date:   Wed Apr 1 11:31:50 2026 +0700
+
+    α╣Çα╕₧α╕┤α╣êα╕íα╕úα╕░α╕Üα╕Üα╣Çα╕¢α╕Ñα╕╡α╣êα╕óα╕Öα╣éα╕ùα╕Öα╕éα╕¡α╕çα╕úα╕░α╕Üα╕Üα╕ùα╕▒α╣ëα╕çα╕½α╕íα╕ö α╣üα╕Ñα╕░α╣üα╕üα╣ëα╣äα╕éα╕½α╕Öα╣ëα╕▓ admin α╕Öα╕┤α╕öα╕½α╕Öα╣êα╕¡α╕ó
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index 39ebc48..70f86c1 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -37,6 +37,8 @@ interface AuthState {
+     
+     requestOtp: (tel: string) => Promise<string | null>;
+     verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
++    updateProfile: (profileData: { username?: string; tel?: string; line_id?: string }) => Promise<{ success: boolean; error?: string }>;
++    changePassword: (passwordData: { oldPassword: string; newPassword: string }) => Promise<{ success: boolean; error?: string }>;
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+@@ -193,6 +195,53 @@ export const useAuthStore = create<AuthState>()(
+                     return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë α╕üα╕úα╕╕α╕ôα╕▓α╕òα╕úα╕ºα╕êα╕¬α╕¡α╕Üα╕ºα╣êα╕▓ Server α╣Çα╕¢α╕┤α╕öα╕¡α╕óα╕╣α╣ê' };
+                 }
+             },
++
++            updateProfile: async (profileData) => {
++                try {
++                    const token = get().token;
++                    const response = await fetch('http://localhost:5000/api/users/me', {
++                        method: 'PUT',
++                        headers: { 
++                            'Content-Type': 'application/json',
++                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
++                        },
++                        body: JSON.stringify(profileData)
++                    });
++                    const data = await response.json();
++                    if (response.ok) {
++                        set((state) => ({
++                            currentUser: state.currentUser ? { ...state.currentUser, ...data.user } : null
++                        }));
++                        return { success: true };
++                    }
++                    return { success: false, error: data.error || 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╕¡α╕▒α╕¢α╣Çα╕öα╕òα╕éα╣ëα╕¡α╕íα╕╣α╕Ñα╣äα╕öα╣ë' };
++                } catch (error) {
++                    console.error('Update profile error:', error);
++                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë' };
++                }
++            },
++
++            changePassword: async (passwordData) => {
++                try {
++                    const token = get().token;
++                    const response = await fetch('http://localhost:5000/api/users/change-password', {
++                        method: 'PUT',
++                        headers: { 
++                            'Content-Type': 'application/json',
++                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
++                        },
++                        body: JSON.stringify(passwordData)
++                    });
++                    const data = await response.json();
++                    if (response.ok) {
++                        return { success: true };
++                    }
++                    return { success: false, error: data.error || 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕¢α╕Ñα╕╡α╣êα╕óα╕Öα╕úα╕½α╕▒α╕¬α╕£α╣êα╕▓α╕Öα╣äα╕öα╣ë' };
++                } catch (error) {
++                    console.error('Change password error:', error);
++                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë' };
++                }
++            },
+         }),
+         { 
+             name: 'auth-storage', 
+
+commit d518084b186f346ce4133116e2247eff3754c65d
+Author: Kawin-Guiy <kawin.sup@spumail.net>
+Date:   Tue Mar 31 16:33:14 2026 +0700
+
+    α╣Çα╕₧α╕┤α╣êα╕í API α╕¡α╕▒α╕₧α╣Çα╕üα╕úα╕ö swagger  α╣Çα╕₧α╕┤α╣êα╕í jwt
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index ce72f5c..39ebc48 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -5,7 +5,6 @@ import { persist } from 'zustand/middleware';
+ export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+ export type UserRole = 'USER' | 'SELLER' | 'ADMIN';
+ 
+-// α╣éα╕äα╕úα╕çα╕¬α╕úα╣ëα╕▓α╕ç User α╣âα╕½α╣ëα╕òα╕úα╕çα╕üα╕▒α╕Üα╕¬α╕┤α╣êα╕çα╕ùα╕╡α╣êα╣äα╕öα╣ëα╕íα╕▓α╕êα╕▓α╕ü Backend
+ export interface User {
+     id: string | number;
+     username: string;
+@@ -21,23 +20,21 @@ export interface User {
+ interface AuthState {
+     isLoggedIn: boolean;
+     currentUser: User | null;
++    token: string | null;
+     usersList: User[];
+-    justUpgraded: boolean; // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í state α╣âα╕½α╕íα╣ê
++    justUpgraded: boolean;
+     
+-    // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
+-    loginSuccess: (user: User) => void; 
++    loginSuccess: (user: User, token: string) => void; 
+     logout: () => void;
+     updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
+-    setJustUpgraded: (val: boolean) => void; // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í action α╣âα╕½α╕íα╣ê
++    setJustUpgraded: (val: boolean) => void;
+     
+-    // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕êα╕▒α╕öα╕üα╕▓α╕úα╕£α╕╣α╣ëα╣âα╕èα╣ë (α╕¬α╕│α╕½α╕úα╕▒α╕Ü Admin)
+     fetchUsers: () => Promise<void>;
+     updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
+     deleteUser: (userId: string | number) => Promise<void>;
+     approveUserVerification: (userId: string | number) => Promise<void>;
+     rejectUserVerification: (userId: string | number) => Promise<void>;
+     
+-    // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Ü Seller OTP
+     requestOtp: (tel: string) => Promise<string | null>;
+     verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
+ }
+@@ -45,24 +42,25 @@ interface AuthState {
+ export const useAuthStore = create<AuthState>()(
+     persist(
+         (set, get) => ({
+-            // --- State α╕₧α╕╖α╣ëα╕Öα╕Éα╕▓α╕Ö ---
+             isLoggedIn: false,
+             currentUser: null,
++            token: null,
+             usersList: [],
+-            justUpgraded: false, // ≡ƒæê α╣Çα╕úα╕┤α╣êα╕íα╕òα╣ëα╕Öα╣Çα╕¢α╣çα╕Ö false
++            justUpgraded: false,
+ 
+-            // --- Actions ---
+-            loginSuccess: (user) => {
++            loginSuccess: (user, token) => {
+                 set({ 
+                     isLoggedIn: true, 
+-                    currentUser: user 
++                    currentUser: user,
++                    token
+                 });
+             },
+ 
+             logout: () => {
+                 set({ 
+                     isLoggedIn: false, 
+-                    currentUser: null 
++                    currentUser: null,
++                    token: null
+                 });
+             },
+ 
+@@ -72,23 +70,36 @@ export const useAuthStore = create<AuthState>()(
+                 }));
+             },
+ 
+-            setJustUpgraded: (val) => set({ justUpgraded: val }), // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í action
++            setJustUpgraded: (val) => set({ justUpgraded: val }),
+ 
+             fetchUsers: async () => {
+                 try {
+-                    const response = await fetch('http://localhost:5000/api/users');
++                    const token = get().token;
++                    const response = await fetch('http://localhost:5000/api/users', {
++                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
++                    });
+                     const data = await response.json();
+-                    set({ usersList: data });
++                    if (!response.ok) {
++                        console.warn('Fetch users failed:', data.error);
++                        set({ usersList: [] });
++                        return;
++                    }
++                    set({ usersList: Array.isArray(data) ? data : [] });
+                 } catch (error) {
+                     console.error('Fetch users error:', error);
++                    set({ usersList: [] }); // prevents crash if unauthorized
+                 }
+             },
+ 
+             updateUserRole: async (userId, role) => {
+                 try {
++                    const token = get().token;
+                     const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
+                         method: 'PUT',
+-                        headers: { 'Content-Type': 'application/json' },
++                        headers: { 
++                            'Content-Type': 'application/json',
++                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
++                        },
+                         body: JSON.stringify({ role })
+                     });
+                     if (response.ok) {
+@@ -104,8 +115,10 @@ export const useAuthStore = create<AuthState>()(
+ 
+             deleteUser: async (userId) => {
+                 try {
++                    const token = get().token;
+                     const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+-                        method: 'DELETE'
++                        method: 'DELETE',
++                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                     });
+                     if (response.ok) {
+                         set((state) => ({
+@@ -118,7 +131,6 @@ export const useAuthStore = create<AuthState>()(
+             },
+ 
+             approveUserVerification: async (userId) => {
+-                // α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕òα╕¡α╕Öα╕Öα╕╡α╣ëα╣Çα╕úα╕▓α╕êα╕░α╣âα╕èα╣ë role SELLER α╣üα╕ùα╕Öα╕üα╕▓α╕úα╕¡α╕Öα╕╕α╕íα╕▒α╕òα╕┤
+                 await get().updateUserRole(userId, 'SELLER');
+                 set((state) => ({
+                     usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'APPROVED' } : u)
+@@ -133,14 +145,18 @@ export const useAuthStore = create<AuthState>()(
+ 
+             requestOtp: async (tel) => {
+                 try {
++                    const token = get().token;
+                     const response = await fetch('http://localhost:5000/api/users/request-otp', {
+                         method: 'POST',
+-                        headers: { 'Content-Type': 'application/json' },
++                        headers: { 
++                            'Content-Type': 'application/json',
++                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
++                        },
+                         body: JSON.stringify({ tel })
+                     });
+                     const data = await response.json();
+                     if (response.ok) {
+-                        return data.otp; // α╕¬α╣êα╕ç OTP α╕üα╕Ñα╕▒α╕Üα╣äα╕¢α╣Çα╕₧α╕╖α╣êα╕¡α╕êα╕│α╕Ñα╕¡α╕çα╕üα╕▓α╕úα╕úα╕▒α╕Ü OTP
++                        return data.otp; 
+                     }
+                     return null;
+                 } catch (error) {
+@@ -151,19 +167,22 @@ export const useAuthStore = create<AuthState>()(
+ 
+             verifyOtp: async (tel, otp, sellerData) => {
+                 try {
++                    const token = get().token;
+                     const response = await fetch('http://localhost:5000/api/users/verify-otp', {
+                         method: 'POST',
+-                        headers: { 'Content-Type': 'application/json' },
++                        headers: { 
++                            'Content-Type': 'application/json',
++                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
++                        },
+                         body: JSON.stringify({ tel, otp, ...sellerData })
+                     });
+                     const data = await response.json();
+                     if (response.ok) {
+-                        // α╕¡α╕▒α╕¢α╣Çα╕öα╕ò currentUser α╣âα╕Ö store α╕ùα╕▒α╕Öα╕ùα╕╡α╕ûα╣ëα╕▓α╣Çα╕¢α╣çα╕Öα╕£α╕╣α╣ëα╣âα╕èα╣ëα╕ùα╕╡α╣êα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕¡α╕óα╕╣α╣ê
+                         const currentUser = get().currentUser;
+                         if (currentUser && currentUser.id === data.user.id) {
+                             set({ 
+                                 currentUser: { ...currentUser, ...data.user },
+-                                justUpgraded: true // ≡ƒæê α╕òα╕▒α╣ëα╕çα╕äα╣êα╕▓α╣Çα╕¢α╣çα╕Ö true α╕ùα╕▒α╕Öα╕ùα╕╡α╕½α╕Ñα╕▒α╕çα╕¬α╕│α╣Çα╕úα╣çα╕ê
++                                justUpgraded: true
+                             });
+                         }
+                         return { success: true };
+
+commit 5a9d6054a14af79de62292a6a102dd12490d44aa
+Author: Kawin-Guiy <kawin.sup@spumail.net>
+Date:   Fri Mar 27 08:20:49 2026 +0700
+
+    thaiID validation working
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index b4ef4a1..ce72f5c 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -39,7 +39,7 @@ interface AuthState {
+     
+     // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Ü Seller OTP
+     requestOtp: (tel: string) => Promise<string | null>;
+-    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<boolean>;
++    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<{ success: boolean; error?: string }>;
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+@@ -166,12 +166,12 @@ export const useAuthStore = create<AuthState>()(
+                                 justUpgraded: true // ≡ƒæê α╕òα╕▒α╣ëα╕çα╕äα╣êα╕▓α╣Çα╕¢α╣çα╕Ö true α╕ùα╕▒α╕Öα╕ùα╕╡α╕½α╕Ñα╕▒α╕çα╕¬α╕│α╣Çα╕úα╣çα╕ê
+                             });
+                         }
+-                        return true;
++                        return { success: true };
+                     }
+-                    return false;
++                    return { success: false, error: data.error || 'α╣Çα╕üα╕┤α╕öα╕éα╣ëα╕¡α╕£α╕┤α╕öα╕₧α╕Ñα╕▓α╕ö' };
+                 } catch (error) {
+                     console.error('Verify OTP error:', error);
+-                    return false;
++                    return { success: false, error: 'α╣äα╕íα╣êα╕¬α╕▓α╕íα╕▓α╕úα╕ûα╣Çα╕èα╕╖α╣êα╕¡α╕íα╕òα╣êα╕¡ Backend α╣äα╕öα╣ë α╕üα╕úα╕╕α╕ôα╕▓α╕òα╕úα╕ºα╕êα╕¬α╕¡α╕Üα╕ºα╣êα╕▓ Server α╣Çα╕¢α╕┤α╕öα╕¡α╕óα╕╣α╣ê' };
+                 }
+             },
+         }),
+
+commit 5a0e3c18e715376cc4991ab5f4d1a58742105469
+Author: foolk2548-lgtm <foolk2548@gmail.com>
+Date:   Wed Mar 25 20:04:00 2026 +0700
+
+    α╕óα╕╖α╕Öα╕óα╕▒α╕Öα╕£α╕╣α╣ëα╕éα╕▓α╕ó
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index db8a9ad..b4ef4a1 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -12,6 +12,9 @@ export interface User {
+     email: string;
+     role: UserRole;
+     tel?: string;
++    full_name?: string;
++    id_card_number?: string;
++    line_id?: string;
+     verificationStatus?: VerificationStatus;
+ }
+ 
+@@ -19,17 +22,24 @@ interface AuthState {
+     isLoggedIn: boolean;
+     currentUser: User | null;
+     usersList: User[];
++    justUpgraded: boolean; // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í state α╣âα╕½α╕íα╣ê
+     
+     // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
+     loginSuccess: (user: User) => void; 
+     logout: () => void;
+     updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
++    setJustUpgraded: (val: boolean) => void; // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í action α╣âα╕½α╕íα╣ê
+     
+     // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕êα╕▒α╕öα╕üα╕▓α╕úα╕£α╕╣α╣ëα╣âα╕èα╣ë (α╕¬α╕│α╕½α╕úα╕▒α╕Ü Admin)
+     fetchUsers: () => Promise<void>;
+     updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
++    deleteUser: (userId: string | number) => Promise<void>;
+     approveUserVerification: (userId: string | number) => Promise<void>;
+     rejectUserVerification: (userId: string | number) => Promise<void>;
++    
++    // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Ü Seller OTP
++    requestOtp: (tel: string) => Promise<string | null>;
++    verifyOtp: (tel: string, otp: string, sellerData: { fullName: string; idCardNumber: string; email: string; lineId: string }) => Promise<boolean>;
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+@@ -39,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
+             isLoggedIn: false,
+             currentUser: null,
+             usersList: [],
++            justUpgraded: false, // ≡ƒæê α╣Çα╕úα╕┤α╣êα╕íα╕òα╣ëα╕Öα╣Çα╕¢α╣çα╕Ö false
+ 
+             // --- Actions ---
+             loginSuccess: (user) => {
+@@ -61,6 +72,8 @@ export const useAuthStore = create<AuthState>()(
+                 }));
+             },
+ 
++            setJustUpgraded: (val) => set({ justUpgraded: val }), // ≡ƒæê α╣Çα╕₧α╕┤α╣êα╕í action
++
+             fetchUsers: async () => {
+                 try {
+                     const response = await fetch('http://localhost:5000/api/users');
+@@ -89,6 +102,21 @@ export const useAuthStore = create<AuthState>()(
+                 }
+             },
+ 
++            deleteUser: async (userId) => {
++                try {
++                    const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
++                        method: 'DELETE'
++                    });
++                    if (response.ok) {
++                        set((state) => ({
++                            usersList: state.usersList.filter(u => u.id !== userId)
++                        }));
++                    }
++                } catch (error) {
++                    console.error('Delete user error:', error);
++                }
++            },
++
+             approveUserVerification: async (userId) => {
+                 // α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕òα╕¡α╕Öα╕Öα╕╡α╣ëα╣Çα╕úα╕▓α╕êα╕░α╣âα╕èα╣ë role SELLER α╣üα╕ùα╕Öα╕üα╕▓α╕úα╕¡α╕Öα╕╕α╕íα╕▒α╕òα╕┤
+                 await get().updateUserRole(userId, 'SELLER');
+@@ -102,6 +130,50 @@ export const useAuthStore = create<AuthState>()(
+                     usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'REJECTED' } : u)
+                 }));
+             },
++
++            requestOtp: async (tel) => {
++                try {
++                    const response = await fetch('http://localhost:5000/api/users/request-otp', {
++                        method: 'POST',
++                        headers: { 'Content-Type': 'application/json' },
++                        body: JSON.stringify({ tel })
++                    });
++                    const data = await response.json();
++                    if (response.ok) {
++                        return data.otp; // α╕¬α╣êα╕ç OTP α╕üα╕Ñα╕▒α╕Üα╣äα╕¢α╣Çα╕₧α╕╖α╣êα╕¡α╕êα╕│α╕Ñα╕¡α╕çα╕üα╕▓α╕úα╕úα╕▒α╕Ü OTP
++                    }
++                    return null;
++                } catch (error) {
++                    console.error('Request OTP error:', error);
++                    return null;
++                }
++            },
++
++            verifyOtp: async (tel, otp, sellerData) => {
++                try {
++                    const response = await fetch('http://localhost:5000/api/users/verify-otp', {
++                        method: 'POST',
++                        headers: { 'Content-Type': 'application/json' },
++                        body: JSON.stringify({ tel, otp, ...sellerData })
++                    });
++                    const data = await response.json();
++                    if (response.ok) {
++                        // α╕¡α╕▒α╕¢α╣Çα╕öα╕ò currentUser α╣âα╕Ö store α╕ùα╕▒α╕Öα╕ùα╕╡α╕ûα╣ëα╕▓α╣Çα╕¢α╣çα╕Öα╕£α╕╣α╣ëα╣âα╕èα╣ëα╕ùα╕╡α╣êα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕¡α╕óα╕╣α╣ê
++                        const currentUser = get().currentUser;
++                        if (currentUser && currentUser.id === data.user.id) {
++                            set({ 
++                                currentUser: { ...currentUser, ...data.user },
++                                justUpgraded: true // ≡ƒæê α╕òα╕▒α╣ëα╕çα╕äα╣êα╕▓α╣Çα╕¢α╣çα╕Ö true α╕ùα╕▒α╕Öα╕ùα╕╡α╕½α╕Ñα╕▒α╕çα╕¬α╕│α╣Çα╕úα╣çα╕ê
++                            });
++                        }
++                        return true;
++                    }
++                    return false;
++                } catch (error) {
++                    console.error('Verify OTP error:', error);
++                    return false;
++                }
++            },
+         }),
+         { 
+             name: 'auth-storage', 
+
+commit c582576a9b58ceae950ea72c7e90f4923ac8e60d
+Author: foolk2548-lgtm <foolk2548@gmail.com>
+Date:   Wed Mar 25 18:44:08 2026 +0700
+
+    α╣üα╕üα╣ëα╣äα╕éα╣üα╕¡α╕öα╕íα╕┤α╕Ö
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index be8d41d..db8a9ad 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -18,22 +18,29 @@ export interface User {
+ interface AuthState {
+     isLoggedIn: boolean;
+     currentUser: User | null;
++    usersList: User[];
+     
+     // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
+     loginSuccess: (user: User) => void; 
+     logout: () => void;
++    updateProfileDisplay: (updates: { username: string; profileImageUrl?: string }) => void;
++    
++    // Actions α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕êα╕▒α╕öα╕üα╕▓α╕úα╕£α╕╣α╣ëα╣âα╕èα╣ë (α╕¬α╕│α╕½α╕úα╕▒α╕Ü Admin)
++    fetchUsers: () => Promise<void>;
++    updateUserRole: (userId: string | number, role: UserRole) => Promise<void>;
++    approveUserVerification: (userId: string | number) => Promise<void>;
++    rejectUserVerification: (userId: string | number) => Promise<void>;
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+     persist(
+-        (set) => ({
++        (set, get) => ({
+             // --- State α╕₧α╕╖α╣ëα╕Öα╕Éα╕▓α╕Ö ---
+             isLoggedIn: false,
+             currentUser: null,
+-            users: [], // α╣Çα╕₧α╕┤α╣êα╕í state α╕¬α╕│α╕½α╕úα╕▒α╕Üα╣Çα╕üα╣çα╕Üα╕úα╕▓α╕óα╕èα╕╖α╣êα╕¡α╕£α╕╣α╣ëα╣âα╕èα╣ëα╕ùα╕▒α╣ëα╕çα╕½α╕íα╕ö (α╕úα╕ºα╕íα╕ûα╕╢α╕çα╕£α╕╣α╣ëα╕éα╕▓α╕ó)
++            usersList: [],
+ 
+             // --- Actions ---
+-            // Γ¡É∩╕Å α╣Çα╕íα╕╖α╣êα╕¡ Backend α╕Üα╕¡α╕üα╕ºα╣êα╕▓α╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö α╕üα╣çα╕¬α╣êα╕çα╕éα╣ëα╕¡α╕íα╕╣α╕Ñ User α╕íα╕▓α╣Çα╕üα╣çα╕Üα╣äα╕ºα╣ëα╕ùα╕╡α╣êα╕Öα╕╡α╣ê
+             loginSuccess: (user) => {
+                 set({ 
+                     isLoggedIn: true, 
+@@ -41,16 +48,63 @@ export const useAuthStore = create<AuthState>()(
+                 });
+             },
+ 
+-            // Γ¡É∩╕Å α╣Çα╕äα╕Ñα╕╡α╕óα╕úα╣îα╕éα╣ëα╕¡α╕íα╕╣α╕Ñα╕ùα╕┤α╣ëα╕çα╕òα╕¡α╕Öα╕üα╕öα╕¡α╕¡α╕üα╕êα╕▓α╕üα╕úα╕░α╕Üα╕Ü
+             logout: () => {
+                 set({ 
+                     isLoggedIn: false, 
+                     currentUser: null 
+                 });
+             },
++
++            updateProfileDisplay: (updates) => {
++                set((state) => ({
++                    currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null
++                }));
++            },
++
++            fetchUsers: async () => {
++                try {
++                    const response = await fetch('http://localhost:5000/api/users');
++                    const data = await response.json();
++                    set({ usersList: data });
++                } catch (error) {
++                    console.error('Fetch users error:', error);
++                }
++            },
++
++            updateUserRole: async (userId, role) => {
++                try {
++                    const response = await fetch(`http://localhost:5000/api/users/${userId}/role`, {
++                        method: 'PUT',
++                        headers: { 'Content-Type': 'application/json' },
++                        body: JSON.stringify({ role })
++                    });
++                    if (response.ok) {
++                        const { user } = await response.json();
++                        set((state) => ({
++                            usersList: state.usersList.map(u => u.id === userId ? { ...u, role: user.role } : u)
++                        }));
++                    }
++                } catch (error) {
++                    console.error('Update user role error:', error);
++                }
++            },
++
++            approveUserVerification: async (userId) => {
++                // α╕¬α╕│α╕½α╕úα╕▒α╕Üα╕òα╕¡α╕Öα╕Öα╕╡α╣ëα╣Çα╕úα╕▓α╕êα╕░α╣âα╕èα╣ë role SELLER α╣üα╕ùα╕Öα╕üα╕▓α╕úα╕¡α╕Öα╕╕α╕íα╕▒α╕òα╕┤
++                await get().updateUserRole(userId, 'SELLER');
++                set((state) => ({
++                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'APPROVED' } : u)
++                }));
++            },
++
++            rejectUserVerification: async (userId) => {
++                set((state) => ({
++                    usersList: state.usersList.map(u => u.id === userId ? { ...u, verificationStatus: 'REJECTED' } : u)
++                }));
++            },
+         }),
+         { 
+-            name: 'auth-storage', // α╕èα╕╖α╣êα╕¡α╕üα╕╕α╕ìα╣üα╕êα╕ùα╕╡α╣êα╣âα╕èα╣ëα╣Çα╕ïα╕ƒα╕Ñα╕ç LocalStorage 
++            name: 'auth-storage', 
+         }
+     )
+ );
+\ No newline at end of file
+
+commit 5d1c39275649f1fc8212da89fdcbb7c48cb41d3d
+Merge: bdd42e4 b847012
+Author: Momeam <chanapol.ser@spumail.net>
+Date:   Wed Mar 25 10:37:01 2026 +0700
+
+    Add dotenv dependency and enhance SellersPage with error handling and state management
+
+commit bdd42e45a5f4e952b60ef4095342340050198434
+Author: Momeam <chanapol.ser@spumail.net>
+Date:   Wed Mar 25 10:33:31 2026 +0700
+
+    m,
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index 00e64e9..5bebb8a 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -22,6 +22,7 @@ interface AuthState {
+     // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
+     loginSuccess: (user: User) => void; 
+     logout: () => void;
++    
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+
+commit b847012dab6abd4473098db8dc0e60efde1270c7
+Author: Kawin-Guiy <kawin.sup@spumail.net>
+Date:   Wed Mar 25 09:36:32 2026 +0700
+
+    α╣üα╕üα╣ëα╣äα╕éα╕½α╕Öα╣ëα╕▓α╕äα╣ëα╕Öα╕½α╕▓α╕£α╕╣α╣ëα╕éα╕▓α╕ó
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+index 00e64e9..a74e7ed 100644
+--- a/frontend/src/stores/useAuthStore.ts
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -22,6 +22,7 @@ interface AuthState {
+     // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
+     loginSuccess: (user: User) => void; 
+     logout: () => void;
++    users: any[]; // α╣Çα╕₧α╕┤α╣êα╕í state α╕¬α╕│α╕½α╕úα╕▒α╕Üα╣Çα╕üα╣çα╕Üα╕úα╕▓α╕óα╕èα╕╖α╣êα╕¡α╕£α╕╣α╣ëα╣âα╕èα╣ëα╕ùα╕▒α╣ëα╕çα╕½α╕íα╕ö (α╕úα╕ºα╕íα╕ûα╕╢α╕çα╕£α╕╣α╣ëα╕éα╕▓α╕ó)
+ }
+ 
+ export const useAuthStore = create<AuthState>()(
+@@ -30,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
+             // --- State α╕₧α╕╖α╣ëα╕Öα╕Éα╕▓α╕Ö ---
+             isLoggedIn: false,
+             currentUser: null,
++            users: [], // α╣Çα╕₧α╕┤α╣êα╕í state α╕¬α╕│α╕½α╕úα╕▒α╕Üα╣Çα╕üα╣çα╕Üα╕úα╕▓α╕óα╕èα╕╖α╣êα╕¡α╕£α╕╣α╣ëα╣âα╕èα╣ëα╕ùα╕▒α╣ëα╕çα╕½α╕íα╕ö (α╕úα╕ºα╕íα╕ûα╕╢α╕çα╕£α╕╣α╣ëα╕éα╕▓α╕ó)
+ 
+             // --- Actions ---
+             // Γ¡É∩╕Å α╣Çα╕íα╕╖α╣êα╕¡ Backend α╕Üα╕¡α╕üα╕ºα╣êα╕▓α╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö α╕üα╣çα╕¬α╣êα╕çα╕éα╣ëα╕¡α╕íα╕╣α╕Ñ User α╕íα╕▓α╣Çα╕üα╣çα╕Üα╣äα╕ºα╣ëα╕ùα╕╡α╣êα╕Öα╕╡α╣ê
+
+commit 6ff43dce944a1233f90a7eb658f7c53f71e740d7
+Author: Momeam <chanapol.ser@spumail.net>
+Date:   Tue Mar 24 01:26:54 2026 +0700
+
+    Complete login system and connected to database
+
+diff --git a/frontend/src/stores/useAuthStore.ts b/frontend/src/stores/useAuthStore.ts
+new file mode 100644
+index 0000000..00e64e9
+--- /dev/null
++++ b/frontend/src/stores/useAuthStore.ts
+@@ -0,0 +1,55 @@
++import { create } from 'zustand';
++import { persist } from 'zustand/middleware';
++
++// --- Types ---
++export type VerificationStatus = 'IDLE' | 'PENDING' | 'APPROVED' | 'REJECTED';
++export type UserRole = 'USER' | 'SELLER' | 'ADMIN';
++
++// α╣éα╕äα╕úα╕çα╕¬α╕úα╣ëα╕▓α╕ç User α╣âα╕½α╣ëα╕òα╕úα╕çα╕üα╕▒α╕Üα╕¬α╕┤α╣êα╕çα╕ùα╕╡α╣êα╣äα╕öα╣ëα╕íα╕▓α╕êα╕▓α╕ü Backend
++export interface User {
++    id: string | number;
++    username: string;
++    email: string;
++    role: UserRole;
++    tel?: string;
++    verificationStatus?: VerificationStatus;
++}
++
++interface AuthState {
++    isLoggedIn: boolean;
++    currentUser: User | null;
++    
++    // Actions α╕ùα╕╡α╣êα╕½α╕Öα╣ëα╕▓α╕Üα╣ëα╕▓α╕Öα╣äα╕ºα╣ëα╣Çα╕úα╕╡α╕óα╕üα╣âα╕èα╣ëα╕òα╕¡α╕Öα╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö/α╕Ñα╣çα╕¡α╕üα╣Çα╕¡α╕▓α╕ùα╣î
++    loginSuccess: (user: User) => void; 
++    logout: () => void;
++}
++
++export const useAuthStore = create<AuthState>()(
++    persist(
++        (set) => ({
++            // --- State α╕₧α╕╖α╣ëα╕Öα╕Éα╕▓α╕Ö ---
++            isLoggedIn: false,
++            currentUser: null,
++
++            // --- Actions ---
++            // Γ¡É∩╕Å α╣Çα╕íα╕╖α╣êα╕¡ Backend α╕Üα╕¡α╕üα╕ºα╣êα╕▓α╕Ñα╣çα╕¡α╕üα╕¡α╕┤α╕Öα╕£α╣êα╕▓α╕Ö α╕üα╣çα╕¬α╣êα╕çα╕éα╣ëα╕¡α╕íα╕╣α╕Ñ User α╕íα╕▓α╣Çα╕üα╣çα╕Üα╣äα╕ºα╣ëα╕ùα╕╡α╣êα╕Öα╕╡α╣ê
++            loginSuccess: (user) => {
++                set({ 
++                    isLoggedIn: true, 
++                    currentUser: user 
++                });
++            },
++
++            // Γ¡É∩╕Å α╣Çα╕äα╕Ñα╕╡α╕óα╕úα╣îα╕éα╣ëα╕¡α╕íα╕╣α╕Ñα╕ùα╕┤α╣ëα╕çα╕òα╕¡α╕Öα╕üα╕öα╕¡α╕¡α╕üα╕êα╕▓α╕üα╕úα╕░α╕Üα╕Ü
++            logout: () => {
++                set({ 
++                    isLoggedIn: false, 
++                    currentUser: null 
++                });
++            },
++        }),
++        { 
++            name: 'auth-storage', // α╕èα╕╖α╣êα╕¡α╕üα╕╕α╕ìα╣üα╕êα╕ùα╕╡α╣êα╣âα╕èα╣ëα╣Çα╕ïα╕ƒα╕Ñα╕ç LocalStorage 
++        }
++    )
++);
+\ No newline at end of file

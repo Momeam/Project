@@ -16,11 +16,12 @@ export default function HomePage() {
     const [minBed, setMinBed] = useState(0);
 
     const { properties, fetchProperties, isLoading } = usePropertyStore();
-    const { favoriteIds, toggleFavorite } = useFavoriteStore();
+    const { favoriteIds, toggleFavorite, fetchFavorites } = useFavoriteStore();
 
     useEffect(() => {
         fetchProperties(); 
-    }, [fetchProperties]);
+        fetchFavorites();
+    }, [fetchProperties, fetchFavorites]);
 
     const filteredProperties = useMemo(() => {
         if (!properties || properties.length === 0) return []; 
@@ -44,7 +45,7 @@ export default function HomePage() {
             return isVisible && isTypeMatch && matchesSearch && isPriceMatch && isBedMatch;
         });
 
-        return result.sort((a, b) => (favoriteIds.has(b.id) ? 1 : 0) - (favoriteIds.has(a.id) ? 1 : 0));
+        return result.sort((a, b) => (favoriteIds.includes(String(b.id)) ? 1 : 0) - (favoriteIds.includes(String(a.id)) ? 1 : 0));
     }, [properties, searchQuery, filterType, minPrice, maxPrice, minBed, favoriteIds]);
 
 
@@ -160,7 +161,7 @@ export default function HomePage() {
                                             }}
                                             className="absolute top-4 right-4 z-20 bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 p-2.5 rounded-full shadow-lg hover:bg-white/40 dark:hover:bg-black/40 hover:scale-110 transition-all duration-300"
                                         >
-                                            <Heart className={`w-5 h-5 transition-colors ${favoriteIds.has(property.id) ? "fill-rose-500 text-rose-500" : "text-white"}`} />
+                                            <Heart className={`w-5 h-5 transition-colors ${favoriteIds.includes(String(property.id)) ? "fill-rose-500 text-rose-500" : "text-white"}`} />
                                         </button>
 
                                         <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">

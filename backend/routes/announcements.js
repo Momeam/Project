@@ -33,6 +33,22 @@ router.post('/', verifyToken, verifyRole(['ADMIN']), async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// [PUT] อัปเดตประกาศ (Admin Only)
+router.put('/:id', verifyToken, verifyRole(['ADMIN']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, content, type } = req.body;
+        
+        const result = await pool.query(
+            'UPDATE Announcements SET title = $1, content = $2, type = $3 WHERE id = $4 RETURNING *',
+            [title, content, type, id]
+        );
+        
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบประกาศนี้' });
+        res.status(200).json({ message: 'อัปเดตประกาศสำเร็จ! ✅', announcement: result.rows[0] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // [PUT] ปิด/เปิด การใช้งานประกาศ (Admin Only)
 router.put('/:id/status', verifyToken, verifyRole(['ADMIN']), async (req, res) => {
     try {

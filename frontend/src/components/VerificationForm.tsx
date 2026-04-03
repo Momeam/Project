@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Mail, Send, Loader2, Key, User, Smartphone, CreditCard, ArrowLeft } from 'lucide-react';
 
 export default function VerificationForm() {
-    const user = useAuthStore((state) => state.user);
+    const currentUser = useAuthStore((state) => state.currentUser);
+
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     
@@ -17,8 +18,9 @@ export default function VerificationForm() {
         idCard: '', 
         tel: '', 
         otp: '', 
-        email: user?.email || ''
+        email: currentUser?.email || ''
     });
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -66,8 +68,9 @@ export default function VerificationForm() {
         setIsLoading(true);
         try {
             // ยิง API ไปอัปเกรด Role พร้อมตรวจ OTP
-            const res = await fetch(`http://localhost:5000/api/users/upgrade/${user?.id}`, {
+            const res = await fetch(`http://localhost:5000/api/users/upgrade/${currentUser?.id}`, {
                 method: 'PUT',
+
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     otp: formData.otp,
@@ -79,11 +82,12 @@ export default function VerificationForm() {
 
             if (res.ok) {
                 // อัปเดตสถานะในแอปทันที! เป็น SELLER แล้ว
-                useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, role: 'SELLER', tel: formData.tel } : null,
+                useAuthStore.setState((state: any) => ({
+                    currentUser: state.currentUser ? { ...state.currentUser, role: 'SELLER', tel: formData.tel } : null,
                     justUpgraded: true // เด้งป๊อปอัปฉลอง!
                 }));
             } else {
+
                 const data = await res.json();
                 alert(data.error || 'รหัส OTP ไม่ถูกต้อง!');
             }

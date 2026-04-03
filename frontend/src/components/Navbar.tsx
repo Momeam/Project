@@ -24,8 +24,9 @@ export default function Navbar() {
     
     // 🟢 เปลี่ยนชื่อตัวแปรให้ตรงกับ useAuthStore
     const isLoggedIn = useAuthStore((state) => state.isAuthenticated);
-    const currentUser = useAuthStore((state) => state.user);
+    const currentUser = useAuthStore((state) => state.currentUser);
     const role = currentUser?.role;
+
     const logout = useAuthStore((state) => state.logout);
 
     useEffect(() => {

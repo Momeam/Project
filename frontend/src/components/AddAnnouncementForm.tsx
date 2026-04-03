@@ -119,15 +119,16 @@ export function AddAnnouncementForm({ onClose, onSubmit }: AddAnnouncementFormPr
           display: none;
         }
       `}</style>
-      <Card className="w-full max-w-2xl animate-slide-up shadow-2xl">
-        <CardHeader className="flex flex-row items-center justify-between border-b">
-          <CardTitle className="text-2xl">เพิ่มประกาศของคุณ</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-red-50 hover:text-red-600 transition-colors">
+      <Card className="w-full max-w-2xl animate-slide-up shadow-2xl bg-white dark:bg-[#16161a] border-slate-200 dark:border-white/10">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-white/10">
+          <CardTitle className="text-2xl text-slate-900 dark:text-white">เพิ่มประกาศของคุณ</CardTitle>
+          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:text-slate-400 transition-colors">
             <X className="h-6 w-6" />
           </Button>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-hide pt-6">
+          <CardContent className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-hide pt-6 text-slate-900 dark:text-slate-200">
+
             <div className="space-y-2">
               <Label>ประเภทประกาศ</Label>
               <div className="flex gap-4">
@@ -159,9 +160,10 @@ export function AddAnnouncementForm({ onClose, onSubmit }: AddAnnouncementFormPr
                 value={formData.description}
                 onChange={handleInputChange}
                 placeholder="รายละเอียดเกี่ยวกับอสังหาริมทรัพย์ของคุณ"
-                className="w-full p-2 border rounded-md"
+                className="w-full p-3 border rounded-xl bg-white dark:bg-[#0a0a0c] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 rows={4}
               />
+
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -212,10 +214,10 @@ export function AddAnnouncementForm({ onClose, onSubmit }: AddAnnouncementFormPr
 
               {/* รายการสิ่งอำนวยความสะดวกที่เพิ่มแล้ว */}
               {formData.facilities.length > 0 && (
-                <div className="space-y-2 border rounded-md p-3 bg-gray-50 max-h-48 overflow-y-auto scrollbar-hide">
+                <div className="space-y-2 border rounded-xl p-3 bg-slate-50 dark:bg-black/50 border-slate-200 dark:border-white/5 max-h-48 overflow-y-auto scrollbar-hide">
                   {formData.facilities.map((facility, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm">{facility}</span>
+                    <div key={index} className="flex items-center justify-between bg-white dark:bg-[#1a1a20] p-2 rounded-lg border border-slate-200 dark:border-white/5 shadow-sm">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">{facility}</span>
                       <div className="flex gap-1">
                         <Button
                           type="button"
@@ -270,12 +272,13 @@ export function AddAnnouncementForm({ onClose, onSubmit }: AddAnnouncementFormPr
               </div>
             )}
           </CardContent>
-          <CardFooter className="gap-2 border-t bg-gray-50 flex justify-end">
-            <Button type="button" variant="outline" onClick={onClose} className="transition-all hover:bg-gray-100">
+          <CardFooter className="gap-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 p-6 flex justify-end rounded-b-xl">
+            <Button type="button" variant="outline" onClick={onClose} className="transition-all hover:bg-slate-100 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 dark:text-white">
               ยกเลิก
             </Button>
-            <Button type="submit" className="transition-all hover:shadow-lg">ยืนยันและส่งประกาศ</Button>
+            <Button type="submit" className="transition-all hover:shadow-lg font-bold">ยืนยันและส่งประกาศ</Button>
           </CardFooter>
+
         </form>
       </Card>
     </div>

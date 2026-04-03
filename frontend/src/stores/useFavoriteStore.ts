@@ -1,28 +1,31 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 interface FavoriteState {
-    favoriteIds: Set<string>;
+    favoriteIds: string[];
     fetchFavorites: () => Promise<void>;
     toggleFavorite: (propertyId: string) => Promise<void>;
+    isFavorite: (propertyId: string) => boolean;
     clearFavorites: () => void;
 }
 
 export const useFavoriteStore = create<FavoriteState>((set, get) => ({
-    favoriteIds: new Set(),
+    favoriteIds: [],
 
     fetchFavorites: async () => {
         const token = useAuthStore.getState().token || localStorage.getItem('token');
         if (!token) return;
 
         try {
-            const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-            const response = await fetch(`http://${currentIP}:5000/api/favorites`, {
+            const response = await fetch(`${API_URL}/favorites`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             if (response.ok) {
                 const favorites = await response.json();
-                const ids = new Set(favorites.map((fav: any) => fav.id));
+                // The API returns full property objects - extract the IDs
+                const ids = favorites.map((fav: any) => String(fav.id));
                 set({ favoriteIds: ids });
             }
         } catch (error) {
@@ -38,39 +41,35 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
         }
 
         const { favoriteIds } = get();
-        const newFavoriteIds = new Set(favoriteIds);
-        const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-        let method = '';
+        const pid = String(propertyId);
+        const isCurrentlyFavorite = favoriteIds.includes(pid);
 
-        if (newFavoriteIds.has(propertyId)) {
-            newFavoriteIds.delete(propertyId);
-            method = 'DELETE';
+        // Optimistic update
+        if (isCurrentlyFavorite) {
+            set({ favoriteIds: favoriteIds.filter(id => id !== pid) });
         } else {
-            newFavoriteIds.add(propertyId);
-            method = 'POST';
+            set({ favoriteIds: [...favoriteIds, pid] });
         }
 
-        set({ favoriteIds: newFavoriteIds }); // Optimistic update
-
         try {
-            const url = method === 'DELETE' 
-                ? `http://${currentIP}:5000/api/favorites/${propertyId}` 
-                : `http://${currentIP}:5000/api/favorites`;
+            const url = isCurrentlyFavorite
+                ? `${API_URL}/favorites/${propertyId}`
+                : `${API_URL}/favorites`;
 
             const response = await fetch(url, {
-                method,
+                method: isCurrentlyFavorite ? 'DELETE' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: method === 'POST' ? JSON.stringify({ property_id: propertyId }) : undefined,
+                body: !isCurrentlyFavorite ? JSON.stringify({ property_id: propertyId }) : undefined,
             });
 
             if (!response.ok) {
                 // Revert on failure
                 set({ favoriteIds });
                 const data = await response.json();
-                alert(data.error || 'เกิดข้อผิดพลาดในการอัปเดตรายการโปรด');
+                console.error('Toggle favorite failed:', data.error);
             }
         } catch (error) {
             // Revert on failure
@@ -79,7 +78,11 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
         }
     },
 
+    isFavorite: (propertyId: string) => {
+        return get().favoriteIds.includes(String(propertyId));
+    },
+
     clearFavorites: () => {
-        set({ favoriteIds: new Set() });
+        set({ favoriteIds: [] });
     },
 }));
