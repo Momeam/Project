@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const { validateThaiIdCard, validateThaiPhoneNumber, validateThaiFullName } = require('../utils/validators');
 const { otps, sendRealSMS } = require('../utils/sms');
-const { verifyToken, verifyRole } = require('../middleware/auth');
+const { verifyToken, verifyRole } = require('../config/middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_homelink_1234';
 

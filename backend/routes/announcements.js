@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const { verifyToken, verifyRole } = require('../middleware/auth');
+const { verifyToken, verifyRole } = require('../config/middleware/auth');
 
 // [GET] ดึงประกาศทั้งหมด (ที่กำลังใช้งาน)
 router.get('/', async (req, res) => {

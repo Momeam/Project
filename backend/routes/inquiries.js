@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken } = require('../config/middleware/auth');
 
 // [POST] ส่งข้อความสอบถาม
 router.post('/', async (req, res) => {

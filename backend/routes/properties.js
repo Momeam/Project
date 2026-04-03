@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const { verifyToken, verifyRole } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { verifyToken, verifyRole } = require('../config/middleware/auth');
+const upload = require('../config/middleware/upload');
 const fs = require('fs');
 const path = require('path');
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const { verifyToken, verifyRole } = require('../middleware/auth');
+const { verifyToken, verifyRole } = require('../config/middleware/auth');
 
 // [GET] สถิติรวม
 router.get('/stats', async (req, res) => {

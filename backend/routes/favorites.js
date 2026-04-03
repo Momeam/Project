@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken } = require('../config/middleware/auth');
 
 // [POST] เพิ่มเข้ารายการโปรด (ต้อง Login)
 router.post('/', verifyToken, async (req, res) => {
