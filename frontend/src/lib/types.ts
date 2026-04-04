@@ -61,12 +61,22 @@ export interface Property {
     updatedAt: Date;
     status: 'ACTIVE' | 'DRAFT' | 'INACTIVE' | 'PENDING' | 'SOLD' | 'BOOKED';
     viewCount: number;
+    units?: { id: number, floor_number: number, room_number: string, status: string, price: number }[];
     latitude?: number;
     longitude?: number;
     pricePerUnit?: number;
     floors?: number;
     yearBuilt?: number;
+    parking?: number;
+    landSize?: number;
+    furniture?: 'NONE' | 'PARTLY' | 'FULLY';
+    nearbyTransport?: string;
+    deposit?: number;
+    minContract?: number;
+    is_project?: boolean;
     downPaymentPercent?: number; 
     loanTerm?: number;
     interestRate?: number;
+    totalFloors?: number;
+    roomsPerFloor?: number;
 }

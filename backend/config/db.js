@@ -19,6 +19,7 @@ async function connectPostgres() {
                 id SERIAL PRIMARY KEY, userId VARCHAR(255), title VARCHAR(255), description TEXT,
                 type VARCHAR(50), category VARCHAR(50), price DECIMAL(18,2), address VARCHAR(255),
                 province VARCHAR(100), bedrooms INT, bathrooms INT, size INT, "interiorDetails" TEXT, status VARCHAR(50) DEFAULT 'ACTIVE',
+                is_project BOOLEAN DEFAULT FALSE,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -34,6 +35,7 @@ async function connectPostgres() {
                 id_card_number VARCHAR(13),
                 line_id VARCHAR(100),
                 role VARCHAR(20) DEFAULT 'USER',
+                seller_type VARCHAR(50) DEFAULT 'OWNER',
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -55,6 +57,18 @@ async function connectPostgres() {
                 id SERIAL PRIMARY KEY,
                 property_id INT REFERENCES Properties(id) ON DELETE CASCADE,
                 image_url VARCHAR(500) NOT NULL,
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS CondoUnits (
+                id SERIAL PRIMARY KEY,
+                property_id INT REFERENCES Properties(id) ON DELETE CASCADE,
+                floor_number INT NOT NULL,
+                room_number VARCHAR(50) NOT NULL,
+                status VARCHAR(20) DEFAULT 'AVAILABLE',
+                price DECIMAL(18,2),
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -82,6 +96,38 @@ async function connectPostgres() {
         `);
         
         console.log('✅ All Tables are ready!');
+
+        // 🟢 ตรวจสอบและเพิ่มคอลัมน์ใหม่สำหรับตารางที่มีอยู่แล้ว (ALTER TABLE) เพื่ออัปเกรดระบบ
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN is_project BOOLEAN DEFAULT FALSE;`);
+            console.log("🟢 Column is_project added to Properties");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE CondoUnits ADD COLUMN size DECIMAL(10,2);`);
+            console.log("🟢 Column size added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE CondoUnits ADD COLUMN features TEXT;`);
+            console.log("🟢 Column features added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE CondoUnits ADD COLUMN grid_x INT DEFAULT 0, ADD COLUMN grid_y INT DEFAULT 0, ADD COLUMN grid_w INT DEFAULT 1, ADD COLUMN grid_h INT DEFAULT 1;`);
+            console.log("🟢 Grid columns added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE CondoUnits ADD COLUMN door_side VARCHAR(20), ADD COLUMN window_side VARCHAR(20);`);
+            console.log("🟢 Orientation columns added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE CondoUnits ADD COLUMN unit_type VARCHAR(50) DEFAULT 'ROOM';`);
+            console.log("🟢 Column unit_type added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
     } catch (err) {
         console.error('❌ Neon Database Connection Failed:', err);
     }

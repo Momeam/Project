@@ -77,7 +77,7 @@ app.post('/api/otp/send-email', async (req, res) => {
 
 app.put('/api/users/upgrade/:id', async (req, res) => {
     const { id } = req.params;
-    const { otp, email, tel, realName } = req.body;
+    const { otp, email, tel, realName, sellerType } = req.body;
 
     const record = otpStore[email];
     
@@ -87,9 +87,10 @@ app.put('/api/users/upgrade/:id', async (req, res) => {
 
     try {
         const { pool } = require('./config/db'); // ดึง pool มาใช้ตรงนี้เพื่อความชัวร์
+        const type = sellerType || 'OWNER';
         const result = await pool.query(
-            'UPDATE users SET role = $1, tel = $2, username = $3 WHERE id = $4 RETURNING id, email, username, role, tel',
-            ['SELLER', tel, realName, id]
+            'UPDATE users SET role = $1, tel = $2, username = $3, seller_type = $4 WHERE id = $5 RETURNING id, email, username, role, tel, seller_type',
+            ['SELLER', tel, realName, type, id]
         );
         delete otpStore[email];
         res.json({ success: true, user: result.rows[0] });

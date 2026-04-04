@@ -43,7 +43,7 @@ export default function UserDashboardPage() {
     // กรองเอาเฉพาะประกาศที่ userId ตรงกับคนที่ล็อกอินอยู่
     const myListings = useMemo(() => {
         if (!userId) return [];
-        return allListings.filter(p => String(p.userId) === String(userId));
+        return allListings.filter(p => String(p.userId || p.userid) === String(userId));
     }, [allListings, userId]);
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');

@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
 
         if (!user || !isMatch) return res.status(401).json({ error: 'อีเมล หรือ รหัสผ่านไม่ถูกต้อง!' });
 
-        const userData = { id: user.id, username: user.username, email: user.email, role: user.role, tel: user.tel };
+        const userData = { id: user.id, username: user.username, email: user.email, role: user.role, tel: user.tel, seller_type: user.seller_type };
         const token = jwt.sign(userData, JWT_SECRET, { expiresIn: '1d' });
 
         res.status(200).json({ message: 'เข้าสู่ระบบสำเร็จ! 🎉', user: userData, token });
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
 // [GET] Me
 router.get('/me', verifyToken, async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, username, email, tel, full_name, line_id, role, id_card_number FROM Users WHERE id = $1', [req.user.id]);
+        const result = await pool.query('SELECT id, username, email, tel, full_name, line_id, role, id_card_number, seller_type FROM Users WHERE id = $1', [req.user.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
         res.status(200).json(result.rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }

@@ -6,9 +6,10 @@ import { Property } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar, Sparkles, Heart, MessageCircle, Send } from 'lucide-react'
+import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building2, Calendar, Sparkles, Heart, MessageCircle, Send, LayoutGrid } from 'lucide-react'
 import { sendInquiry } from '@/actions/listings'
 import { usePropertyStore } from '@/stores/usePropertyStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 interface PropertyDetailProps {
     property: Property
@@ -47,6 +48,50 @@ export function PropertyDetail({
             alert(result.message)
         }
     }
+
+    const { currentUser } = useAuthStore();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const [units, setUnits] = useState(property.units || []);
+
+    const handleUpdateUnitStatus = async (unitId: number, currentStatus: string) => {
+        if (!isOwner) return;
+        
+        const nextStatusMap: Record<string, string> = {
+            'AVAILABLE': 'BOOKED',
+            'BOOKED': 'SOLD',
+            'SOLD': 'AVAILABLE'
+        };
+        const nextStatus = nextStatusMap[currentStatus] || 'AVAILABLE';
+
+        try {
+            const res = await fetch(`http://localhost:5000/api/properties/units/${unitId}/status`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ status: nextStatus })
+            });
+
+            if (res.ok) {
+                setUnits(prev => prev.map(u => u.id === unitId ? { ...u, status: nextStatus } : u));
+            } else {
+                alert('อัปเดตสถานะไม่สำเร็จ')
+            }
+        } catch (error) {
+            console.error('Error updating unit status', error);
+        }
+    };
+
+    // จัดกลุ่มห้องตามชั้น
+    const floorsMap = units.reduce((acc, unit) => {
+        if (!acc[unit.floor_number]) acc[unit.floor_number] = [];
+        acc[unit.floor_number].push(unit);
+        return acc;
+    }, {} as Record<number, typeof units>);
+    
+    // เรียงชั้นจากบนลงล่าง (เช่น ชั้น 10 อยู่บนสุด)
+    const sortedFloors = Object.keys(floorsMap).map(Number).sort((a, b) => b - a);
 
     return (
         <div className="w-full max-w-5xl mx-auto py-8 px-4 space-y-6">
@@ -172,6 +217,57 @@ export function PropertyDetail({
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* ========== Interactive Floor Plan / Seat Booking ========== */}
+                    {property.is_project && units.length > 0 && (
+                        <Card className="dark:bg-gray-800 border-2 border-blue-500/20 shadow-xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-900">
+                                <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                                    <LayoutGrid className="w-6 h-6 text-blue-500" />
+                                    ผังห้องโครงการ (Interactive Floor Plan)
+                                </CardTitle>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                                    {isOwner ? 'คลิกที่ห้องเพื่อสลับสถานะ (ว่าง -> จอง -> ขาย)' : 'เลือกดูสถานะของแต่ละห้องในตึก'}
+                                </p>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                {/* Legend */}
+                                <div className="flex gap-4 items-center justify-center mb-8 text-sm font-semibold">
+                                    <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-emerald-500 rounded text-emerald-800"></div> ว่าง</div>
+                                    <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-yellow-400 rounded"></div> จองแล้ว</div>
+                                    <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-rose-500 rounded"></div> ขายแล้ว</div>
+                                </div>
+
+                                <div className="space-y-6 overflow-x-auto pb-4">
+                                    {sortedFloors.map(floor => (
+                                        <div key={floor} className="flex items-center min-w-max">
+                                            <div className="w-20 font-bold justify-center text-slate-500 flex items-center pr-4 border-r-2 border-slate-200 dark:border-slate-700 h-full">
+                                                ชั้น {floor}
+                                            </div>
+                                            <div className="flex gap-2 pl-6">
+                                                {floorsMap[floor].map((unit: any) => (
+                                                    <button
+                                                        key={unit.id}
+                                                        onClick={() => handleUpdateUnitStatus(unit.id, unit.status)}
+                                                        disabled={!isOwner}
+                                                        title={`ห้อง ${unit.room_number} - ${unit.status === 'AVAILABLE' ? 'ว่าง' : unit.status === 'BOOKED' ? 'ติดจอง' : 'ขายแล้ว'}`}
+                                                        className={`w-14 h-14 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm transition-all
+                                                            ${unit.status === 'AVAILABLE' ? 'bg-emerald-100 border border-emerald-400 text-emerald-700 hover:bg-emerald-200 shadow-emerald-500/20' : ''}
+                                                            ${unit.status === 'BOOKED' ? 'bg-yellow-100 border border-yellow-400 text-yellow-700 hover:bg-yellow-200 shadow-yellow-500/20' : ''}
+                                                            ${unit.status === 'SOLD' ? 'bg-rose-100 border border-rose-400 text-rose-700 hover:bg-rose-200 shadow-rose-500/20 opacity-80' : ''}
+                                                            ${!isOwner ? 'cursor-default' : 'hover:-translate-y-1 hover:shadow-md cursor-pointer'}
+                                                        `}
+                                                    >
+                                                        {unit.room_number}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* ข้อมูลอสังหาริมทรัพย์ */}
                     <Card className="dark:bg-gray-800">

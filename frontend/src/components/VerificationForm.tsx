@@ -18,7 +18,8 @@ export default function VerificationForm() {
         idCard: '', 
         tel: '', 
         otp: '', 
-        email: currentUser?.email || ''
+        email: currentUser?.email || '',
+        sellerType: 'OWNER' // ค่าเริ่มต้น
     });
 
 
@@ -76,14 +77,15 @@ export default function VerificationForm() {
                     otp: formData.otp,
                     email: formData.email,
                     tel: formData.tel,
-                    realName: `${formData.firstName} ${formData.lastName}`
+                    realName: `${formData.firstName} ${formData.lastName}`,
+                    sellerType: formData.sellerType
                 })
             });
 
             if (res.ok) {
                 // อัปเดตสถานะในแอปทันที! เป็น SELLER แล้ว
                 useAuthStore.setState((state: any) => ({
-                    currentUser: state.currentUser ? { ...state.currentUser, role: 'SELLER', tel: formData.tel } : null,
+                    currentUser: state.currentUser ? { ...state.currentUser, role: 'SELLER', seller_type: formData.sellerType, tel: formData.tel } : null,
                     justUpgraded: true // เด้งป๊อปอัปฉลอง!
                 }));
             } else {
@@ -134,6 +136,15 @@ export default function VerificationForm() {
                             <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input name="tel" placeholder="เบอร์โทรศัพท์ 10 หลัก" maxLength={10} onChange={handleChange} className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" required />
                         </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">ประเภทผู้ขายลงประกาศ</label>
+                        <select name="sellerType" value={formData.sellerType} onChange={handleChange as any} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700 dark:text-white" required>
+                            <option value="OWNER">เจ้าของห้อง (Room Owner)</option>
+                            <option value="AGENT">นายหน้า (Agent)</option>
+                            <option value="DEVELOPER">เจ้าของตึก/โครงการ (Project Developer)</option>
+                        </select>
                     </div>
 
                     <Button type="submit" disabled={isLoading} className="w-full py-7 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95">

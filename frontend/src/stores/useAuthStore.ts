@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type UserRole = 'USER' | 'SELLER' | 'ADMIN';
+export type VerificationStatus = 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 interface AuthState {
 
@@ -205,4 +206,4 @@ export const useAuthStore = create<AuthState>()(
         }
     )
 );
-
+

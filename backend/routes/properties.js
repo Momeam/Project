@@ -73,9 +73,12 @@ router.get('/:id', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูลประกาศนี้' });
         
         const imagesResult = await pool.query('SELECT * FROM PropertyImages WHERE property_id = $1', [id]);
+        const unitsResult = await pool.query('SELECT * FROM CondoUnits WHERE property_id = $1 ORDER BY floor_number ASC, room_number ASC', [id]);
+        
         const property = { 
             ...result.rows[0], 
-            images: imagesResult.rows.map(img => ({ url: img.image_url })) // Map ให้เป็น format { url: '...' }
+            images: imagesResult.rows.map(img => ({ url: img.image_url })),
+            units: unitsResult.rows
         };
         res.status(200).json(property);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -93,16 +96,30 @@ router.post('/', async (req, res) => {
         const userId = p.userId || 'anonymous';
 
         const queryText = `INSERT INTO Properties 
-            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE') RETURNING *`; 
+            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status, is_project) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE', $13) RETURNING *`; 
 
         const values = [
             userId, p.title, p.description || '', p.type || 'SALE', p.category || 'CONDO', p.price, 
-            p.address || '', p.province || '', p.bedrooms || 0, p.bathrooms || 0, p.size || 0, p.interiorDetails || ''
+            p.address || '', p.province || '', p.bedrooms || 0, p.bathrooms || 0, p.size || 0, p.interiorDetails || '',
+            p.isProject || false
         ];
         
         const result = await pool.query(queryText, values);
         const propertyId = result.rows[0].id;
+
+        // 🏢 ถ้าเป็นโครงการ (isProject = true) ให้สร้างผังห้องจำลอง
+        if (p.isProject && p.totalFloors && p.roomsPerFloor) {
+            for (let floor = 1; floor <= p.totalFloors; floor++) {
+                for (let room = 1; room <= p.roomsPerFloor; room++) {
+                    const roomNumber = `${floor}${room.toString().padStart(2, '0')}`; // e.g., 101, 1205
+                    await pool.query(
+                        `INSERT INTO CondoUnits (property_id, floor_number, room_number, status, price) VALUES ($1, $2, $3, 'AVAILABLE', $4)`,
+                        [propertyId, floor, roomNumber, p.price]
+                    );
+                }
+            }
+        }
 
         // 🖼️ เพิ่มรูปภาพ (ถ้ามีส่งมา)
         if (p.imageUrls && Array.isArray(p.imageUrls)) {
@@ -156,6 +173,139 @@ router.patch('/:id/view', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบประกาศ' });
         res.status(200).json({ viewCount: result.rows[0].viewCount });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [PATCH] อัปเดตรายละเอียดรายห้อง (สถานะ, ราคา, ขนาด, ฟีเจอร์, ผังภายใน)
+router.patch('/units/:unitId', async (req, res) => {
+    try {
+        const { unitId } = req.params;
+        const { status, price, size, features, layout_json } = req.body;
+        
+        const query = `
+            UPDATE CondoUnits 
+            SET status = COALESCE($1, status),
+                price = COALESCE($2, price),
+                size = COALESCE($3, size),
+                features = COALESCE($4, features),
+                layout_json = COALESCE($5, layout_json)
+            WHERE id = $6 
+            RETURNING *
+        `;
+        
+        const result = await pool.query(query, [status, price, size, features, layout_json ? JSON.stringify(layout_json) : null, unitId]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบห้องนี้' });
+        res.status(200).json({ message: 'อัปเดตข้อมูลห้องสำเร็จ', unit: result.rows[0] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [PATCH] อัปเดตสถานะห้องแบบย้อนหลัง (ยังเก็บไว้กันเหนียว)
+router.patch('/units/:unitId/status', async (req, res) => {
+    try {
+        const { unitId } = req.params;
+        const { status } = req.body;
+        const result = await pool.query('UPDATE CondoUnits SET status = $1 WHERE id = $2 RETURNING *', [status, unitId]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบห้องนี้' });
+        res.status(200).json({ message: 'อัปเดตสถานะห้องสำเร็จ', unit: result.rows[0] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [DELETE] ลบหัองทั้งชั้นออกจากโครงการ (Floor Reset)
+router.delete('/:id/floors/:floorNumber/units', async (req, res) => {
+    try {
+        const { id, floorNumber } = req.params;
+        await pool.query('DELETE FROM CondoUnits WHERE property_id = $1 AND floor_number = $2', [id, floorNumber]);
+        res.status(200).json({ message: `ล้างข้อมูลชั้นที่ ${floorNumber} สำเร็จ!` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [DELETE] ลบห้องออกจากผังโครงการ (สำหรับห้องที่ไม่มีอยู่จริง)
+router.delete('/units/:unitId', async (req, res) => {
+    try {
+        const { unitId } = req.params;
+        const result = await pool.query('DELETE FROM CondoUnits WHERE id = $1 RETURNING *', [unitId]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบห้องนี้' });
+        res.status(200).json({ message: 'ลบห้องออกจากระบบสำเร็จ!' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [PUT] บันทึกผังห้องแบบกลุ่ม (Bulk Update Layout)
+router.put('/units/bulk', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { units } = req.body; // Array ของ { id, grid_x, grid_y, grid_w, grid_h, door_side, window_side, room_number, layout_json }
+        
+        for (const u of units) {
+            const query = `
+                UPDATE CondoUnits 
+                SET grid_x = $1, grid_y = $2, grid_w = $3, grid_h = $4, 
+                    door_side = $5, window_side = $6, room_number = $7,
+                    unit_type = $8, layout_json = $9, status = $10, price = $11
+                WHERE id = $12
+            `;
+            await client.query(query, [
+                u.grid_x, u.grid_y, u.grid_w, u.grid_h, 
+                u.door_side, u.window_side, u.room_number, 
+                u.unit_type || 'ROOM', 
+                u.layout_json ? JSON.stringify(u.layout_json) : null,
+                u.status || 'AVAILABLE',
+                u.price || 0,
+                u.id
+            ]);
+        }
+        
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'บันทึกผังโครงการสำเร็จ!' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// [POST] เพิ่มห้องใหม่ในโครงการ (Manual Add Room)
+router.post('/units', async (req, res) => {
+    try {
+        const { property_id, floor_number, room_number, grid_x, grid_y, grid_w, grid_h, price, unit_type, door_side, window_side, layout_json } = req.body;
+        const query = `
+            INSERT INTO CondoUnits (property_id, floor_number, room_number, grid_x, grid_y, grid_w, grid_h, status, price, unit_type, door_side, window_side, layout_json)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'AVAILABLE', $8, $9, $10, $11, $12) RETURNING *
+        `;
+        const result = await pool.query(query, [property_id, floor_number, room_number, grid_x || 0, grid_y || 0, grid_w || 1, grid_h || 1, price || 0, unit_type || 'ROOM', door_side || null, window_side || null, layout_json ? JSON.stringify(layout_json) : null]);
+        res.status(201).json({ message: 'เพิ่มห้องสำเร็จ', unit: result.rows[0] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [POST] เพิ่มห้องแบบกลุ่ม (Bulk Create)
+router.post('/units/bulk', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { units } = req.body;
+        const insertedUnits = [];
+
+        for (const u of units) {
+            const query = `
+                INSERT INTO CondoUnits (property_id, floor_number, room_number, grid_x, grid_y, grid_w, grid_h, status, price, unit_type, door_side, window_side, layout_json)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *
+            `;
+            const res = await client.query(query, [
+                u.property_id, u.floor_number, u.room_number, u.grid_x, u.grid_y, u.grid_w, u.grid_h, 
+                u.status || 'AVAILABLE', u.price || 0, u.unit_type || 'ROOM', u.door_side || null, u.window_side || null,
+                u.layout_json ? JSON.stringify(u.layout_json) : null
+            ]);
+            insertedUnits.push(res.rows[0]);
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json({ message: 'สร้างห้องแบบกลุ่มสำเร็จ!', units: insertedUnits });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
 });
 
 // ==============================
