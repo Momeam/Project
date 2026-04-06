@@ -87,7 +87,7 @@ router.get('/:id', async (req, res) => {
 // 3. Operator: Insert
 // การเพิ่มข้อมูลลงในฐานข้อมูล (INSERT)
 // ใช้คำสั่ง SQL INSERT INTO Properties เพื่อบันทึกข้อมูลประกาศใหม่ลงในตาราง
-router.post('/', async (req, res) => {
+router.post('/', upload.array('images'), async (req, res) => {
     try {
         const p = req.body;
         if (!p.title || !p.price) return res.status(400).json({ error: 'กรุณากรอกหัวข้อและราคา' });
@@ -96,13 +96,16 @@ router.post('/', async (req, res) => {
         const userId = p.userId || 'anonymous';
 
         const queryText = `INSERT INTO Properties 
-            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status, is_project) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE', $13) RETURNING *`; 
+            (userId, title, description, type, category, price, address, province, bedrooms, bathrooms, size, "interiorDetails", status, is_project, total_floors, rooms_per_floor, house_layout, house_floors, blueprint_images) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE', $13, $14, $15, $16, $17, $18) RETURNING *`; 
 
         const values = [
             userId, p.title, p.description || '', p.type || 'SALE', p.category || 'CONDO', p.price, 
             p.address || '', p.province || '', p.bedrooms || 0, p.bathrooms || 0, p.size || 0, p.interiorDetails || '',
-            p.isProject || false
+            p.isProject || false, p.totalFloors || 1, p.roomsPerFloor || 1,
+            p.houseLayout ? JSON.stringify(p.houseLayout) : null,
+            p.houseFloors || 1,
+            p.blueprintImages ? (Array.isArray(p.blueprintImages) ? p.blueprintImages : JSON.parse(p.blueprintImages)) : null
         ];
         
         const result = await pool.query(queryText, values);
@@ -121,7 +124,15 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // 🖼️ เพิ่มรูปภาพ (ถ้ามีส่งมา)
+        // 🖼️ เพิ่มรูปภาพที่อัปโหลดผ่าน Multer
+        if (req.files && Array.isArray(req.files)) {
+            for (const file of req.files) {
+                const url = `/uploads/${file.filename}`;
+                await pool.query('INSERT INTO PropertyImages (property_id, image_url) VALUES ($1, $2)', [propertyId, url]);
+            }
+        }
+
+        // 🖼️ เพิ่มรูปภาพที่เป็น URL (ถ้ามีส่งมาแบบ JSON)
         if (p.imageUrls && Array.isArray(p.imageUrls)) {
             for (const url of p.imageUrls) {
                 await pool.query('INSERT INTO PropertyImages (property_id, image_url) VALUES ($1, $2)', [propertyId, url]);
@@ -138,16 +149,47 @@ router.post('/', async (req, res) => {
 // 4. Operator: Update
 // การแก้ไขข้อมูลในฐานข้อมูล (UPDATE)
 // ใช้คำสั่ง SQL UPDATE Properties เพื่อแก้ไขฟิลด์ข้อมูลในแถวที่มี ID ตรงกับที่ระบุ
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.array('images'), async (req, res) => {
     try {
         const { id } = req.params;
         const p = req.body;
         
-        // 🟢 ตัดเรื่อง Ownership check (Token) ออกเพื่อให้แก้ไขได้เลย
-        const queryText = `UPDATE Properties SET title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5, status=$6 WHERE id=$7 RETURNING *`;
-        const result = await pool.query(queryText, [p.title, p.price, p.description, p.address, p.interiorDetails || '', p.status || 'ACTIVE', id]);
+        // 1. Update Property Record
+        const queryText = `UPDATE Properties SET 
+            title=$1, price=$2, description=$3, address=$4, "interiorDetails"=$5, status=$6, 
+            bedrooms=$7, bathrooms=$8, size=$9, province=$10, 
+            total_floors=$11, rooms_per_floor=$12,
+            house_layout=$14, house_floors=$15, blueprint_images=$16
+            WHERE id=$13 RETURNING *`;
+
+        const values = [
+            p.title, p.price, p.description, p.address, p.interiorDetails || '', p.status || 'ACTIVE',
+            p.bedrooms || 0, p.bathrooms || 0, p.size || 0, p.province || '',
+            p.totalFloors || 1, p.roomsPerFloor || 1, id,
+            p.houseLayout ? JSON.stringify(p.houseLayout) : null,
+            p.houseFloors || 1,
+            p.blueprintImages ? (Array.isArray(p.blueprintImages) ? p.blueprintImages : JSON.parse(p.blueprintImages)) : null
+        ];
+
+        const result = await pool.query(queryText, values);
         
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
+
+        // 2. Sync Units (Clean up ghost floors)
+        if (p.totalFloors) {
+            const newTotal = parseInt(p.totalFloors);
+            // Delete units on floors that no longer exist
+            await pool.query('DELETE FROM CondoUnits WHERE property_id = $1 AND floor_number > $2', [id, newTotal]);
+            console.log(`🧹 Cleaned up units above floor ${newTotal} for property ${id}`);
+        }
+        // 3. Update Images (Add any new ones)
+        if (req.files && Array.isArray(req.files)) {
+            for (const file of req.files) {
+                const url = `/uploads/${file.filename}`;
+                await pool.query('INSERT INTO PropertyImages (property_id, image_url) VALUES ($1, $2)', [id, url]);
+            }
+        }
+
         res.status(200).json({ message: 'แก้ไขสำเร็จ!', property: result.rows[0] });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -225,6 +267,17 @@ router.delete('/units/:unitId', async (req, res) => {
         const result = await pool.query('DELETE FROM CondoUnits WHERE id = $1 RETURNING *', [unitId]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบห้องนี้' });
         res.status(200).json({ message: 'ลบห้องออกจากระบบสำเร็จ!' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [DELETE] ลบห้องแบบกลุ่ม (Bulk Delete) 
+router.post('/units/bulk-delete', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'Invalid IDs' });
+        
+        await pool.query('DELETE FROM CondoUnits WHERE id = ANY($1::int[])', [ids]);
+        res.status(200).json({ message: 'ลบห้องแบบกลุ่มสำเร็จ!' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

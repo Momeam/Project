@@ -24,7 +24,19 @@ function getLocalIPs(): string[] {
 
 const nextConfig: NextConfig = {
   // @ts-ignore - ใส่ไว้กันเหนียว กรณีไฟล์ Type ของ Next.js อัปเดตตามฟีเจอร์ใหม่ไม่ทัน จะได้ไม่ขึ้นเส้นแดงครับ
-  allowedDevOrigins: ['localhost', ...getLocalIPs()],
+  allowedDevOrigins: [
+    'localhost',
+    ...getLocalIPs(),
+    'wyatt-unendorsable-mertie.ngrok-free.dev',
+  ],
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*', // Proxy to Backend
+      },
+    ]
+  },
 };
 
 export default nextConfig;

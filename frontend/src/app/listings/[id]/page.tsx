@@ -10,9 +10,11 @@ import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
 import FloorPlanBuilder from '@/components/FloorPlanBuilder';
+import PropertyLayoutViewer from '@/components/PropertyLayoutViewer';
 
 import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import { useAuthStore } from '@/stores/useAuthStore'; 
+import { authFetch, getAuthHeaders } from '@/lib/authFetch';
 
 // 🟢 1. ย้ายการโหลด MapDisplay ออกมาข้างนอก Component ป้องกัน React แครช
 const MapDisplay = dynamic(
@@ -64,11 +66,12 @@ export default function ListingDetailPage() {
         setIsMounted(true); 
     }, []);
 
-    // ดึงข้อมูลบ้านจาก API จริง
+    // ดึงข้อมูลบ้านจาก API จริง (ดึงทุกครั้งเพื่อให้ได้ข้อมูล units ล่าสุด)
     useEffect(() => {
+        if (!id) return;
         const fetchPropertyDetail = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/properties/${id}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${id}`);
                 if (res.ok) {
                     const data = await res.json();
                     setApiProperty(data);
@@ -81,12 +84,8 @@ export default function ListingDetailPage() {
             }
         };
 
-        if (!storeProperty && id) {
-            fetchPropertyDetail();
-        } else {
-            setIsLoading(false);
-        }
-    }, [id, storeProperty]);
+        fetchPropertyDetail();
+    }, [id]);
 
     // ตรวจสอบสิทธิ์ในการลบ
     const canDelete = useMemo(() => {
@@ -98,7 +97,7 @@ export default function ListingDetailPage() {
         if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
             try {
                 // ยิงลบ API ตรงๆ เลย
-                const res = await fetch(`http://localhost:5000/api/properties/${property.id}`, { method: 'DELETE' });
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${property.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     alert('ลบประกาศเรียบร้อย!');
                     router.push('/');
@@ -141,19 +140,15 @@ export default function ListingDetailPage() {
                 username: property.owner_name, tel: property.owner_tel, line_id: property.owner_line
             });
         }
-        if (property && property.units && units.length === 0) {
-            setUnits(property.units);
-        }
     }, [property]);
 
     const handleUpdateUnitDetail = async (unitId: number, updateData: any) => {
-        const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`http://localhost:5000/api/properties/units/${unitId}`, {
+            const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/units/${unitId}`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
+                    ...getAuthHeaders()
                 },
                 body: JSON.stringify(updateData)
             });
@@ -180,20 +175,38 @@ export default function ListingDetailPage() {
         setSelectedUnit(null);
     };
 
-    // จัดกลุ่มห้องตามชั้น
-    const floorsMap = units.reduce((acc: any, unit: any) => {
-        if (!acc[unit.floor_number]) acc[unit.floor_number] = [];
-        acc[unit.floor_number].push(unit);
-        return acc;
-    }, {});
+    // จัดกลุ่มห้องตามชั้น (Grouping units by floor)
+    const floorsMap = useMemo(() => {
+        return units.reduce((acc: any, unit: any) => {
+            if (!acc[unit.floor_number]) acc[unit.floor_number] = [];
+            acc[unit.floor_number].push(unit);
+            return acc;
+        }, {});
+    }, [units]);
     
-    // เรียงชั้นจากบนลงล่าง
-    const sortedFloors = Object.keys(floorsMap).map(Number).sort((a, b) => b - a);
+    // เรียงชั้นจากบนลงล่าง และกรองให้เหลือเฉพาะชั้นที่อยู่ในช่วง total_floors (ถ้ามีระบุ)
+    const sortedFloors = useMemo(() => {
+        const floors = Object.keys(floorsMap).map(Number);
+        
+        // ดึงขีดจำกัดชั้นจาก DB (snake_case) หรือ state (camelCase)
+        const dbLimit = property?.total_floors || property?.totalFloors;
+        
+        // ถ้ามีขีดจำกัด แต่ขีดจำกัดน้อยกว่าชั้นจริงที่มีห้องพัก ให้ขยายขีดจำกัดให้ครอบคลุม (เพื่อซัพพอร์ตข้อมูลเก่า)
+        const realMaxFloor = floors.length > 0 ? Math.max(...floors) : 1;
+        const limit = dbLimit ? Math.max(dbLimit, realMaxFloor) : realMaxFloor;
+        
+        return floors.filter(f => f <= limit).sort((a, b) => b - a);
+    }, [floorsMap, property]);
 
-    // ตั้งค่าชั้นเริ่มต้น เป็นชั้นสูงสุดที่มีห้องพัก
+    // ตั้งค่าชั้นเริ่มต้น เป็นชั้นต่ำสุดที่มีห้องพัก (ยกเว้นชั้น 1 ถ้ามีชั้นอื่น)
     useEffect(() => {
         if (sortedFloors.length > 0 && activeFloorTab === null) {
-            setActiveFloorTab(sortedFloors[0]);
+            // เลือกชั้นต่ำสุดที่ไม่ใช่ชั้น 1 (ถ้ามี) เพราะชั้น 1 มักเป็นล็อบบี้
+            const nonGroundFloors = sortedFloors.filter(f => f > 1);
+            const startFloor = nonGroundFloors.length > 0 
+                ? nonGroundFloors[nonGroundFloors.length - 1]  // ชั้น 2 (ต่ำสุดจากที่เรียงจากมากไปน้อย)
+                : sortedFloors[sortedFloors.length - 1];
+            setActiveFloorTab(startFloor);
         }
     }, [sortedFloors]);
 
@@ -451,19 +464,23 @@ export default function ListingDetailPage() {
                                                         const isHallway = unit.unit_type === 'HALLWAY';
                                                         const isLift = unit.unit_type === 'LIFT';
                                                         const isExit = unit.unit_type === 'EXIT';
+                                                        const isRoom = unit.unit_type === 'ROOM';
                                                         
                                                         return (
                                                             <button
                                                                 key={unit.id}
-                                                                onClick={() => setSelectedUnit(unit)}
-                                                                title={`ห้อง ${unit.room_number} - ${unit.status === 'AVAILABLE' ? 'ว่าง' : unit.status === 'BOOKED' ? 'ติดจอง' : 'ขายแล้ว'}`}
-                                                                className={`absolute transition-all duration-300 hover:z-20 hover:scale-105 active:scale-95 shadow-sm flex flex-col items-center justify-center font-bold
-                                                                    ${isHallway ? 'bg-slate-100 border border-slate-200 rounded-none cursor-default opacity-50' : 'rounded-lg border-2'}
-                                                                    ${isLift ? 'bg-blue-50 border-blue-200 text-blue-600' : ''}
-                                                                    ${isExit ? 'bg-rose-50 border-rose-200 text-rose-600' : ''}
-                                                                    ${!isHallway && !isLift && !isExit && unit.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white' : ''}
-                                                                    ${!isHallway && !isLift && !isExit && unit.status === 'BOOKED' ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-400 hover:text-white' : ''}
-                                                                    ${!isHallway && !isLift && !isExit && unit.status === 'SOLD' ? 'bg-rose-50 border-rose-400 text-rose-700 opacity-80 hover:opacity-100 hover:bg-rose-500 hover:text-white' : ''}
+                                                                onClick={() => isRoom && setSelectedUnit(unit)}
+                                                                disabled={!isRoom}
+                                                                title={!isRoom ? unit.room_number : `ห้อง ${unit.room_number} - ${unit.status === 'AVAILABLE' ? 'ว่าง' : unit.status === 'BOOKED' ? 'ติดจอง' : 'ขายแล้ว'}`}
+                                                                className={`absolute transition-all duration-300 flex flex-col items-center justify-center font-bold
+                                                                    ${isRoom ? 'hover:z-20 hover:scale-105 active:scale-95 shadow-sm rounded-lg border-2' : 'cursor-default opacity-80'}
+                                                                    ${isHallway ? 'bg-slate-100 border border-slate-200 rounded-none opacity-50' : ''}
+                                                                    ${isLift ? 'bg-blue-50 border border-blue-200 text-blue-600 rounded-lg' : ''}
+                                                                    ${isExit ? 'bg-rose-50 border border-rose-200 text-rose-600 rounded-lg' : ''}
+                                                                    ${!isRoom && !isHallway && !isLift && !isExit ? 'bg-slate-200 border border-slate-300 text-slate-600 rounded-lg' : ''}
+                                                                    ${isRoom && unit.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white' : ''}
+                                                                    ${isRoom && unit.status === 'BOOKED' ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-400 hover:text-white' : ''}
+                                                                    ${isRoom && unit.status === 'SOLD' ? 'bg-rose-50 border-rose-400 text-rose-700 opacity-80 hover:opacity-100 hover:bg-rose-500 hover:text-white' : ''}
                                                                 `}
                                                                 style={{
                                                                     left: `${((unit.grid_x || 0) / 20) * 100}%`,
@@ -505,6 +522,9 @@ export default function ListingDetailPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* ========== Floor Plan / Blueprint ========== */}
+                        <PropertyLayoutViewer property={property} />
 
                         {/* Map & Calc */}
                         <div className="space-y-8">
@@ -646,34 +666,51 @@ export default function ListingDetailPage() {
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-50 rounded-2xl p-5 mb-8 border border-slate-100 shadow-inner group">
-                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-4 text-center tracking-widest">ผังที่จอด / ผังภายในห้อง</p>
-                                    <div className="w-full h-48 relative overflow-hidden transition-all duration-500 group-hover:scale-[1.02]">
-                                        {renderRoomLayout(selectedUnit)}
+                                {/* Internal Layout - only for ROOM type */}
+                                {selectedUnit.unit_type === 'ROOM' && (
+                                    <div className="bg-slate-50 rounded-2xl p-5 mb-8 border border-slate-100 shadow-inner group">
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-4 text-center tracking-widest">ผังภายในห้อง</p>
+                                        <div className="w-full h-48 relative overflow-hidden transition-all duration-500 group-hover:scale-[1.02]">
+                                            {renderRoomLayout(selectedUnit)}
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-center gap-4">
+                                            <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div> Bed</div>
+                                            <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> Bath</div>
+                                            <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div> Kitchen</div>
+                                        </div>
                                     </div>
-                                    <div className="mt-4 flex items-center justify-center gap-4">
-                                        <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div> Bed</div>
-                                        <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> Bath</div>
-                                        <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase"><div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div> Kitchen</div>
-                                    </div>
-                                </div>
+                                )}
                                 
-                                {/* Controls */}
+                                {/* Controls - Booking only for ROOM type */}
                                 <div>
-                                    <Button 
-                                        disabled={selectedUnit.status !== 'AVAILABLE'} 
-                                        onClick={() => handleBookUnit(selectedUnit.id)}
-                                        className={`w-full h-14 text-lg font-bold rounded-xl transition-all 
-                                            ${selectedUnit.status === 'AVAILABLE' ? 'bg-slate-900 hover:bg-black text-white shadow-xl shadow-slate-900/20 hover:-translate-y-1' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
-                                        `}
-                                    >
-                                        {selectedUnit.status === 'AVAILABLE' ? (
-                                            <div className="flex items-center justify-center">
-                                                <CheckCircle className="w-5 h-5 mr-2" /> จองห้องนี้เลย
-                                            </div>
-                                        ) : 'ห้องนี้ถูกจองไปแล้ว'}
-                                    </Button>
-                                    {selectedUnit.status === 'AVAILABLE' && <p className="text-xs text-center text-slate-400 mt-4">* Demo: ห้องจะถูกเปลี่ยนสถานะเป็นจองแล้วทันทีเมื่อกดปุ่ม</p>}
+                                    {selectedUnit.unit_type === 'ROOM' ? (
+                                        <>
+                                            <Button 
+                                                disabled={selectedUnit.status !== 'AVAILABLE'} 
+                                                onClick={() => handleBookUnit(selectedUnit.id)}
+                                                className={`w-full h-14 text-lg font-bold rounded-xl transition-all 
+                                                    ${selectedUnit.status === 'AVAILABLE' ? 'bg-slate-900 hover:bg-black text-white shadow-xl shadow-slate-900/20 hover:-translate-y-1' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                                                `}
+                                            >
+                                                {selectedUnit.status === 'AVAILABLE' ? (
+                                                    <div className="flex items-center justify-center">
+                                                        <CheckCircle className="w-5 h-5 mr-2" /> จองห้องนี้เลย
+                                                    </div>
+                                                ) : 'ห้องนี้ถูกจองไปแล้ว'}
+                                            </Button>
+                                            {selectedUnit.status === 'AVAILABLE' && <p className="text-xs text-center text-slate-400 mt-4">* Demo: ห้องจะถูกเปลี่ยนสถานะเป็นจองแล้วทันทีเมื่อกดปุ่ม</p>}
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-4 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-sm text-slate-500 font-medium">
+                                                {selectedUnit.unit_type === 'LIFT' ? '🛗 ลิฟต์โดยสาร' : 
+                                                 selectedUnit.unit_type === 'EXIT' ? '🚪 ทางออกฉุกเฉิน' : 
+                                                 selectedUnit.unit_type === 'HALLWAY' ? '🚶 ทางเดิน' :
+                                                 `📍 ${selectedUnit.room_number}`}
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">พื้นที่ส่วนกลาง - ไม่สามารถจองได้</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

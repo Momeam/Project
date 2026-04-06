@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useAuthStore } from './useAuthStore';
+import { authFetch, getAuthHeaders } from '@/lib/authFetch';
 
 export interface Inquiry {
     id: string;
@@ -22,6 +22,8 @@ interface InquiryState {
     fetchInquiries: () => Promise<void>;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `/api`;
+
 export const useInquiryStore = create<InquiryState>((set) => ({
     inquiries: [],
     isLoading: false,
@@ -30,10 +32,8 @@ export const useInquiryStore = create<InquiryState>((set) => ({
     fetchInquiries: async () => {
         set({ isLoading: true });
         try {
-            const token = useAuthStore.getState().token || localStorage.getItem('token');
-            const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-            const response = await fetch(`http://${currentIP}:5000/api/inquiries`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await authFetch(`${API_URL}/inquiries`, {
+                headers: getAuthHeaders()
             });
             if (!response.ok) throw new Error('Failed to fetch inquiries');
             const data = await response.json();

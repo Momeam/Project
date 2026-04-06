@@ -135,17 +135,44 @@ router.put('/:id/role', verifyToken, verifyRole(['ADMIN']), async (req, res) => 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// [DELETE] ลบผู้ใช้งาน
+// [DELETE] ลบผู้ใช้งาน (Cascade: ลบประกาศ + ข้อมูลที่เกี่ยวข้องทั้งหมด)
 router.delete('/:id', verifyToken, verifyRole(['ADMIN']), async (req, res) => {
+    const client = await pool.connect();
     try {
         const { id } = req.params;
-        const userResult = await pool.query('SELECT role FROM Users WHERE id = $1', [id]);
+        const userResult = await client.query('SELECT role, username FROM Users WHERE id = $1', [id]);
         if (userResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบผู้ใช้งานนี้' });
         if (userResult.rows[0].role === 'ADMIN') return res.status(403).json({ error: 'ไม่สามารถลบผู้ใช้งาน ADMIN ได้' });
 
-        const result = await pool.query('DELETE FROM Users WHERE id = $1 RETURNING username', [id]);
-        res.status(200).json({ message: `ลบผู้ใช้ ${result.rows[0].username} สำเร็จ! 🗑️` });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const username = userResult.rows[0].username;
+
+        await client.query('BEGIN');
+
+        // 1. ลบ Properties ของ user (PropertyImages, CondoUnits, Favorites ลบ CASCADE อัตโนมัติ)
+        const propsResult = await client.query('SELECT id FROM Properties WHERE userId = $1', [String(id)]);
+        if (propsResult.rows.length > 0) {
+            const propIds = propsResult.rows.map(r => r.id);
+            // ลบรูปจาก disk
+            const imagesResult = await client.query('SELECT image_url FROM PropertyImages WHERE property_id = ANY($1::int[])', [propIds]);
+            for (const img of imagesResult.rows) {
+                const filepath = require('path').join(__dirname, '..', img.image_url);
+                if (require('fs').existsSync(filepath)) require('fs').unlinkSync(filepath);
+            }
+            await client.query('DELETE FROM Properties WHERE userId = $1', [String(id)]);
+        }
+
+        // 2. ลบ Inquiries ที่ user เป็น sender/receiver (ON DELETE CASCADE จัดการแล้ว แต่เผื่อกรณี)
+        // 3. ลบ User
+        await client.query('DELETE FROM Users WHERE id = $1', [id]);
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: `ลบผู้ใช้ ${username} และประกาศทั้งหมดสำเร็จ! 🗑️` });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
 });
 
 // ==============================

@@ -24,7 +24,7 @@ export default function NotificationCenter() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/announcements');
+        const res = await axios.get(`/api/announcements`);
         setAnnouncements(res.data);
         if (res.data.length > 0) setHasNew(true);
       } catch (error) {

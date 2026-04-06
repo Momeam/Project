@@ -17,7 +17,7 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     fetchProperties: async () => {
         set({ isLoading: true, error: null });
         try {
-            const res = await fetch('http://localhost:5000/api/properties');
+            const res = await fetch('/api/properties');
             if (!res.ok) throw new Error('ดึงข้อมูลไม่สำเร็จ');
             const data = await res.json();
             set({ properties: data, isLoading: false });

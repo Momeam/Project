@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { useAuthStore } from './useAuthStore';
+import { authFetch, getAuthHeaders } from '@/lib/authFetch';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `/api`;
 
 interface FavoriteState {
     favoriteIds: string[];
@@ -15,13 +15,11 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     favoriteIds: [],
 
     fetchFavorites: async () => {
-        const token = useAuthStore.getState().token || localStorage.getItem('token');
-        if (!token) return;
+        const headers = getAuthHeaders();
+        if (!headers['Authorization']) return;
 
         try {
-            const response = await fetch(`${API_URL}/favorites`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
+            const response = await authFetch(`${API_URL}/favorites`, { headers });
             if (response.ok) {
                 const favorites = await response.json();
                 // The API returns full property objects - extract the IDs
@@ -34,8 +32,8 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     },
 
     toggleFavorite: async (propertyId: string) => {
-        const token = useAuthStore.getState().token || localStorage.getItem('token');
-        if (!token) {
+        const headers = getAuthHeaders();
+        if (!headers['Authorization']) {
             alert('กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
             return;
         }
@@ -56,11 +54,11 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
                 ? `${API_URL}/favorites/${propertyId}`
                 : `${API_URL}/favorites`;
 
-            const response = await fetch(url, {
+            const response = await authFetch(url, {
                 method: isCurrentlyFavorite ? 'DELETE' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    ...headers,
                 },
                 body: !isCurrentlyFavorite ? JSON.stringify({ property_id: propertyId }) : undefined,
             });
@@ -86,3 +84,4 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
         set({ favoriteIds: [] });
     },
 }));
+

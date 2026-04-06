@@ -20,6 +20,8 @@ async function connectPostgres() {
                 type VARCHAR(50), category VARCHAR(50), price DECIMAL(18,2), address VARCHAR(255),
                 province VARCHAR(100), bedrooms INT, bathrooms INT, size INT, "interiorDetails" TEXT, status VARCHAR(50) DEFAULT 'ACTIVE',
                 is_project BOOLEAN DEFAULT FALSE,
+                total_floors INT DEFAULT 1,
+                rooms_per_floor INT DEFAULT 1,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -126,6 +128,31 @@ async function connectPostgres() {
         try {
             await pool.query(`ALTER TABLE CondoUnits ADD COLUMN unit_type VARCHAR(50) DEFAULT 'ROOM';`);
             console.log("🟢 Column unit_type added to CondoUnits");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN total_floors INT DEFAULT 1;`);
+            console.log("🟢 Column total_floors added to Properties");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN rooms_per_floor INT DEFAULT 1;`);
+            console.log("🟢 Column rooms_per_floor added to Properties");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN house_layout JSONB;`);
+            console.log("🟢 Column house_layout added to Properties");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN house_floors INT DEFAULT 1;`);
+            console.log("🟢 Column house_floors added to Properties");
+        } catch (e) { /* Column already exists */ }
+
+        try {
+            await pool.query(`ALTER TABLE Properties ADD COLUMN blueprint_images TEXT[];`);
+            console.log("🟢 Column blueprint_images added to Properties");
         } catch (e) { /* Column already exists */ }
 
     } catch (err) {

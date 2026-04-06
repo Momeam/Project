@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
                 if (!token) return;
 
                 try {
-                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/me`, {
+                    const res = await fetch('/api/users/me', {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 
@@ -83,9 +83,16 @@ export const useAuthStore = create<AuthState>()(
                     let token = get().token;
                     if (!token) token = localStorage.getItem('token');
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users`, {
+                    const response = await fetch('/api/users', {
                         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                     });
+
+                    if (response.status === 401) {
+                        get().logout();
+                        if (typeof window !== 'undefined') window.location.href = '/login';
+                        return;
+                    }
+
                     const data = await response.json();
                     
                     if (!response.ok) {
@@ -106,7 +113,7 @@ export const useAuthStore = create<AuthState>()(
                     let token = get().token;
                     if (!token) token = localStorage.getItem('token');
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/${userId}/role`, {
+                    const response = await fetch(`/api/users/${userId}/role`, {
                         method: 'PUT',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -114,6 +121,12 @@ export const useAuthStore = create<AuthState>()(
                         },
                         body: JSON.stringify({ role })
                     });
+
+                    if (response.status === 401) {
+                        get().logout();
+                        if (typeof window !== 'undefined') window.location.href = '/login';
+                        return;
+                    }
                     
                     if (response.ok) {
                         const { user } = await response.json();
@@ -131,10 +144,16 @@ export const useAuthStore = create<AuthState>()(
                     let token = get().token;
                     if (!token) token = localStorage.getItem('token');
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/${userId}`, {
+                    const response = await fetch(`/api/users/${userId}`, {
                         method: 'DELETE',
                         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                     });
+
+                    if (response.status === 401) {
+                        get().logout();
+                        if (typeof window !== 'undefined') window.location.href = '/login';
+                        return;
+                    }
                     
                     if (response.ok) {
                         set((state) => ({
@@ -151,7 +170,7 @@ export const useAuthStore = create<AuthState>()(
                     let token = get().token;
                     if (!token) token = localStorage.getItem('token');
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/me`, {
+                    const response = await fetch('/api/users/me', {
                         method: 'PUT',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -159,6 +178,13 @@ export const useAuthStore = create<AuthState>()(
                         },
                         body: JSON.stringify(profileData)
                     });
+
+                    if (response.status === 401) {
+                        get().logout();
+                        if (typeof window !== 'undefined') window.location.href = '/login';
+                        return { success: false, error: 'Session หมดอายุ กรุณาเข้าสู่ระบบใหม่' };
+                    }
+
                     const data = await response.json();
                     if (response.ok) {
                         set((state) => ({
@@ -178,7 +204,7 @@ export const useAuthStore = create<AuthState>()(
                     let token = get().token;
                     if (!token) token = localStorage.getItem('token');
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/users/change-password`, {
+                    const response = await fetch('/api/users/change-password', {
                         method: 'PUT',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -186,6 +212,13 @@ export const useAuthStore = create<AuthState>()(
                         },
                         body: JSON.stringify(passwordData)
                     });
+
+                    if (response.status === 401) {
+                        get().logout();
+                        if (typeof window !== 'undefined') window.location.href = '/login';
+                        return { success: false, error: 'Session หมดอายุ กรุณาเข้าสู่ระบบใหม่' };
+                    }
+
                     const data = await response.json();
                     if (response.ok) {
                         return { success: true };

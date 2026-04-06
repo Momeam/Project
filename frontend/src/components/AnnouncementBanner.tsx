@@ -22,7 +22,7 @@ export default function AnnouncementBanner() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/announcements');
+        const res = await axios.get(`/api/announcements`);
         setAnnouncements(res.data);
       } catch (error) {
         console.error('Error fetching announcements:', error);

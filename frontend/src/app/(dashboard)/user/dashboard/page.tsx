@@ -52,7 +52,7 @@ export default function UserDashboardPage() {
     const handleDelete = async (id: string) => {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้? 🗑️")) {
             try {
-                const response = await fetch(`http://localhost:5000/api/properties/${id}`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${id}`, {
                     method: 'DELETE',
                 });
 

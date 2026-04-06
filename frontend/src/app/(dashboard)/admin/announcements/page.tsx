@@ -3,6 +3,20 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/useAuthStore';
+
+// สร้าง axios instance ที่จัดการ 401 อัตโนมัติ
+const api = axios.create();
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn('Announcements: Token expired — logging out...');
+      useAuthStore.getState().logout();
+      if (typeof window !== 'undefined') window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 import { Megaphone, Trash2, CheckCircle2, XCircle, AlertTriangle, Edit3 } from 'lucide-react';
 
 interface Announcement {
@@ -29,7 +43,7 @@ export default function AdminAnnouncementsPage() {
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/announcements');
+      const res = await axios.get(`/api/announcements`);
       setAnnouncements(res.data);
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -49,13 +63,13 @@ export default function AdminAnnouncementsPage() {
     try {
       if (editingId) {
         // Update existing
-        await axios.put(`http://localhost:5000/api/announcements/${editingId}`, formData, {
+        await api.put(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/announcements/${editingId}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setMessage('อัปเดตประกาศสำเร็จ! 🎉');
       } else {
         // Create new
-        await axios.post('http://localhost:5000/api/announcements', {
+        await api.post(`/api/announcements`, {
           ...formData,
           admin_id: currentUser?.id
         }, {
@@ -91,7 +105,7 @@ export default function AdminAnnouncementsPage() {
 
   const toggleStatus = async (id: number, currentStatus: boolean) => {
     try {
-      await axios.put(`http://localhost:5000/api/announcements/${id}/status`, {
+      await api.put(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/announcements/${id}/status`, {
         is_active: !currentStatus
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -105,7 +119,7 @@ export default function AdminAnnouncementsPage() {
   const deleteAnnouncement = async (id: number) => {
     if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/announcements/${id}`, {
+      await api.delete(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/announcements/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchAnnouncements();

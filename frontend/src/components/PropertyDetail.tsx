@@ -10,6 +10,8 @@ import { MapPin, Phone, Mail, Facebook, Home, Ruler, DoorOpen, Droplet, Building
 import { sendInquiry } from '@/actions/listings'
 import { usePropertyStore } from '@/stores/usePropertyStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { authFetch, getAuthHeaders } from '@/lib/authFetch'
+import PropertyLayoutViewer from './PropertyLayoutViewer'
 
 interface PropertyDetailProps {
     property: Property
@@ -50,7 +52,6 @@ export function PropertyDetail({
     }
 
     const { currentUser } = useAuthStore();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const [units, setUnits] = useState(property.units || []);
 
     const handleUpdateUnitStatus = async (unitId: number, currentStatus: string) => {
@@ -64,11 +65,11 @@ export function PropertyDetail({
         const nextStatus = nextStatusMap[currentStatus] || 'AVAILABLE';
 
         try {
-            const res = await fetch(`http://localhost:5000/api/properties/units/${unitId}/status`, {
+            const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/units/${unitId}/status`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
+                    ...getAuthHeaders()
                 },
                 body: JSON.stringify({ status: nextStatus })
             });
@@ -268,6 +269,9 @@ export function PropertyDetail({
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* ========== Floor Plan / Blueprint ========== */}
+                    <PropertyLayoutViewer property={property} />
 
                     {/* ข้อมูลอสังหาริมทรัพย์ */}
                     <Card className="dark:bg-gray-800">

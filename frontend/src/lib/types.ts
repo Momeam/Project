@@ -79,4 +79,10 @@ export interface Property {
     interestRate?: number;
     totalFloors?: number;
     roomsPerFloor?: number;
+    // Snake_case aliases from DB
+    total_floors?: number;
+    rooms_per_floor?: number;
+    house_layout?: any;
+    house_floors?: number;
+    blueprint_images?: string[];
 }
