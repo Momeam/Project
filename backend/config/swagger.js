@@ -205,6 +205,73 @@ const swaggerDocument = {
             }
         },
 
+        // --- Property Layouts & Sandbox ---
+        '/api/properties/units': {
+            post: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'เพิ่มห้องใหม่ในโครงการ (Manual Add Room)',
+                description: 'เพิ่มห้องเดี่ยวลงในผังโครงการตาม Grid',
+                requestBody: {
+                    content: { 'application/json': { schema: { type: 'object', properties: { property_id: { type: 'string' }, floor_number: { type: 'integer' }, room_number: { type: 'string' }, grid_x: { type: 'integer' }, grid_y: { type: 'integer' }, grid_w: { type: 'integer' }, grid_h: { type: 'integer' }, price: { type: 'number' } } } } }
+                },
+                responses: { 201: { description: 'Room added' } }
+            }
+        },
+        '/api/properties/units/bulk': {
+            post: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'เพิ่มห้องแบบกลุ่ม (Bulk Create)',
+                description: 'สร้างหลายห้องพร้อมกันในระบบผังห้อง Sandbox',
+                requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { units: { type: 'array', items: { type: 'object' } } } } } } },
+                responses: { 201: { description: 'Bulk rooms created' } }
+            },
+            put: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'บันทึกผังห้องแบบกลุ่ม (Bulk Update Layout)',
+                description: 'อัปเดตข้อมูล Grid และพิกัดห้องพร้อมกันหลายห้องในหน้า Sandbox',
+                requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { units: { type: 'array', items: { type: 'object' } } } } } } },
+                responses: { 200: { description: 'Bulk layouts updated' } }
+            }
+        },
+        '/api/properties/units/{unitId}': {
+            patch: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'อัปเดตรายละเอียดรายห้อง (รวมถึงผังภายใน layout_json)',
+                description: 'แก้ไขราคา ขนาด หรือโครงสร้างผังห้องภายใน (Room Layout)',
+                parameters: [{ name: 'unitId', in: 'path', required: true, schema: { type: 'string' } }],
+                requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { status: { type: 'string' }, price: { type: 'number' }, size: { type: 'number' }, layout_json: { type: 'object' } } } } } },
+                responses: { 200: { description: 'Room updated' } }
+            },
+            delete: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'ลบห้องออกจากผังโครงการ',
+                description: 'ลบห้องที่ไม่ต้องการออกจากตัวแปลน (ลบถาวร)',
+                parameters: [{ name: 'unitId', in: 'path', required: true, schema: { type: 'string' } }],
+                responses: { 200: { description: 'Room deleted' } }
+            }
+        },
+        '/api/properties/units/bulk-delete': {
+            post: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'ลบห้องแบบกลุ่ม (Bulk Delete)',
+                description: 'ส่ง Array ของ ID ห้องเพื่อลบพร้อมกัน',
+                requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'string' } } } } } } },
+                responses: { 200: { description: 'Bulk rooms deleted' } }
+            }
+        },
+        '/api/properties/{id}/floors/{floorNumber}/units': {
+            delete: {
+                tags: ['Property Layouts & Sandbox'],
+                summary: 'ลบห้องทั้งชั้นออกจากโครงการ (Floor Reset)',
+                description: 'ล้างข้อมูลห้องทั้งหมดในชั้นใดชั้นหนึ่ง',
+                parameters: [
+                    { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+                    { name: 'floorNumber', in: 'path', required: true, schema: { type: 'string' } }
+                ],
+                responses: { 200: { description: 'Floor reset successfully' } }
+            }
+        },
+
         // --- Favorites ---
         '/api/favorites': {
             get: {
@@ -279,6 +346,55 @@ const swaggerDocument = {
                     content: { 'application/json': { schema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, type: { type: 'string' } } } } }
                 }
             } 
+        },
+
+        // --- OTP & Upgrade ---
+        '/api/otp/send-email': {
+            post: {
+                tags: ['OTP & Upgrade'],
+                summary: 'ส่ง OTP เข้าอีเมล',
+                description: 'ใช้สำหรับส่งรหัส OTP 6 หลักไปยังอีเมลที่ระบุ เพื่อยืนยันตัวตนในการอัปเกรดเป็นผู้ขาย',
+                requestBody: {
+                    required: true,
+                    content: { 'application/json': { schema: { type: 'object', properties: { email: { type: 'string', example: 'seller@example.com' } } } } }
+                },
+                responses: { 
+                    200: { description: 'OTP sent successfully' }, 
+                    400: { description: 'Email is required' }, 
+                    500: { description: 'Server error' } 
+                }
+            }
+        },
+        '/api/users/upgrade/{id}': {
+            put: {
+                tags: ['OTP & Upgrade'],
+                summary: 'อัปเกรดเป็นผู้ขาย (Upgrade to Seller)',
+                description: 'ยืนยันรหัส OTP เพื่ออัปเกรดบทบาทผู้ใช้เป็นระดับ SELLER',
+                parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                requestBody: {
+                    required: true,
+                    content: { 
+                        'application/json': { 
+                            schema: { 
+                                type: 'object', 
+                                required: ['otp', 'email', 'tel', 'realName', 'sellerType'],
+                                properties: { 
+                                    otp: { type: 'string', example: '123456' }, 
+                                    email: { type: 'string', example: 'seller@example.com' }, 
+                                    tel: { type: 'string', example: '0812345678' }, 
+                                    realName: { type: 'string', example: 'John Doe' }, 
+                                    sellerType: { type: 'string', enum: ['OWNER', 'AGENT', 'DEVELOPER'], example: 'OWNER' } 
+                                } 
+                            } 
+                        } 
+                    }
+                },
+                responses: { 
+                    200: { description: 'Upgrade successful' }, 
+                    400: { description: 'Invalid or expired OTP' },
+                    500: { description: 'Server error' }
+                }
+            }
         }
     }
 };
