@@ -16,7 +16,6 @@ import { useFavoriteStore } from '@/stores/useFavoriteStore';
 import { useAuthStore } from '@/stores/useAuthStore'; 
 import { authFetch, getAuthHeaders } from '@/lib/authFetch';
 
-// 🟢 1. ย้ายการโหลด MapDisplay ออกมาข้างนอก Component ป้องกัน React แครช
 const MapDisplay = dynamic(
     () => import('@/components/MapDisplay'),
     { ssr: false, loading: () => <div className="h-[400px] w-full bg-slate-50 rounded-2xl animate-pulse flex items-center justify-center text-gray-400">กำลังโหลดแผนที่...</div> }
@@ -40,20 +39,16 @@ export default function ListingDetailPage() {
     const [showBuilder, setShowBuilder] = useState(false);
     const [activeFloorTab, setActiveFloorTab] = useState<number | null>(null);
 
-    // 🟢 2. ดึงฟังก์ชันอย่างปลอดภัย ป้องกันบัค "is not a function"
     const getPropertyById = usePropertyStore((state) => state.getPropertyById); 
     
-    // เซฟการดึงค่า favorite
     const favoriteIds = useFavoriteStore((state) => state.favoriteIds || []);
     const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
     
     const user = useAuthStore((state) => state.currentUser); 
     
-    // ดึงข้อมูลประกาศ
     const storeProperty = typeof getPropertyById === 'function' ? getPropertyById(id) : null;
     const property = storeProperty || apiProperty;
 
-    // 🟢 3. ตัวกรองรูปภาพ ป้องกัน Database ส่งรูปมาเป็น String แล้วแครช
     const safeImages = useMemo(() => {
         if (!property?.images) return [];
         if (typeof property.images === 'string') {
@@ -66,12 +61,11 @@ export default function ListingDetailPage() {
         setIsMounted(true); 
     }, []);
 
-    // ดึงข้อมูลบ้านจาก API จริง (ดึงทุกครั้งเพื่อให้ได้ข้อมูล units ล่าสุด)
     useEffect(() => {
         if (!id) return;
         const fetchPropertyDetail = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${id}`);
+                const res = await fetch(`http://localhost:5000/api/properties/${id}`);
                 if (res.ok) {
                     const data = await res.json();
                     setApiProperty(data);
@@ -87,7 +81,6 @@ export default function ListingDetailPage() {
         fetchPropertyDetail();
     }, [id]);
 
-    // ตรวจสอบสิทธิ์ในการลบ
     const canDelete = useMemo(() => {
         if (!user || !property) return false;
         return user.role === 'ADMIN' || String(user.id) === String(property.userId || property.userid);
@@ -96,8 +89,7 @@ export default function ListingDetailPage() {
     const handleDelete = async () => {
         if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
             try {
-                // ยิงลบ API ตรงๆ เลย
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${property.id}`, { method: 'DELETE' });
+                const res = await fetch(`http://localhost:5000/api/properties/${property.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     alert('ลบประกาศเรียบร้อย!');
                     router.push('/');
@@ -144,7 +136,7 @@ export default function ListingDetailPage() {
 
     const handleUpdateUnitDetail = async (unitId: number, updateData: any) => {
         try {
-            const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/units/${unitId}`, {
+            const res = await authFetch(`http://localhost:5000/api/properties/units/${unitId}`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -175,7 +167,6 @@ export default function ListingDetailPage() {
         setSelectedUnit(null);
     };
 
-    // จัดกลุ่มห้องตามชั้น (Grouping units by floor)
     const floorsMap = useMemo(() => {
         return units.reduce((acc: any, unit: any) => {
             if (!acc[unit.floor_number]) acc[unit.floor_number] = [];
@@ -184,36 +175,33 @@ export default function ListingDetailPage() {
         }, {});
     }, [units]);
     
-    // เรียงชั้นจากบนลงล่าง และกรองให้เหลือเฉพาะชั้นที่อยู่ในช่วง total_floors (ถ้ามีระบุ)
     const sortedFloors = useMemo(() => {
         const floors = Object.keys(floorsMap).map(Number);
-        
-        // ดึงขีดจำกัดชั้นจาก DB (snake_case) หรือ state (camelCase)
         const dbLimit = property?.total_floors || property?.totalFloors;
-        
-        // ถ้ามีขีดจำกัด แต่ขีดจำกัดน้อยกว่าชั้นจริงที่มีห้องพัก ให้ขยายขีดจำกัดให้ครอบคลุม (เพื่อซัพพอร์ตข้อมูลเก่า)
         const realMaxFloor = floors.length > 0 ? Math.max(...floors) : 1;
         const limit = dbLimit ? Math.max(dbLimit, realMaxFloor) : realMaxFloor;
-        
         return floors.filter(f => f <= limit).sort((a, b) => b - a);
     }, [floorsMap, property]);
 
-    // ตั้งค่าชั้นเริ่มต้น เป็นชั้นต่ำสุดที่มีห้องพัก (ยกเว้นชั้น 1 ถ้ามีชั้นอื่น)
     useEffect(() => {
         if (sortedFloors.length > 0 && activeFloorTab === null) {
-            // เลือกชั้นต่ำสุดที่ไม่ใช่ชั้น 1 (ถ้ามี) เพราะชั้น 1 มักเป็นล็อบบี้
             const nonGroundFloors = sortedFloors.filter(f => f > 1);
             const startFloor = nonGroundFloors.length > 0 
-                ? nonGroundFloors[nonGroundFloors.length - 1]  // ชั้น 2 (ต่ำสุดจากที่เรียงจากมากไปน้อย)
+                ? nonGroundFloors[nonGroundFloors.length - 1]  
                 : sortedFloors[sortedFloors.length - 1];
             setActiveFloorTab(startFloor);
         }
     }, [sortedFloors]);
 
-    // เซ็ตภาพแรกตอนโหลด
+    // 🟢 โค้ดดึงรูประบบพอร์ต 5000 (สำหรับภาพหลัก)
     useEffect(() => {
         if (safeImages.length > 0) {
-            setActiveImage(safeImages[0].url || safeImages[0].image_url || safeImages[0]);
+            const firstImg = safeImages[0].url || safeImages[0].image_url || safeImages[0];
+            if (typeof firstImg === 'string' && firstImg.startsWith('/uploads')) {
+                setActiveImage(`http://localhost:5000${firstImg}`);
+            } else {
+                setActiveImage(firstImg);
+            }
         }
     }, [safeImages]);
 
@@ -224,7 +212,6 @@ export default function ListingDetailPage() {
         image: null
     };
 
-    // 🟢 4. Renderer สำหรับผังห้องภายใน (Internal Layout)
     const renderRoomLayout = (unit: any) => {
         const layout = unit.layout_json;
         if (!layout || !layout.components || layout.components.length === 0) {
@@ -328,7 +315,13 @@ export default function ListingDetailPage() {
                             {safeImages.length > 1 && (
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {safeImages.map((img: any, index: number) => {
-                                        const imageUrl = img.url || img.image_url || img;
+                                        const rawUrl = img.url || img.image_url || img;
+                                        // 🟢 โค้ดดึงรูประบบพอร์ต 5000 (สำหรับภาพเล็ก)
+                                        let imageUrl = rawUrl;
+                                        if (typeof rawUrl === 'string' && rawUrl.startsWith('/uploads')) {
+                                            imageUrl = `http://localhost:5000${rawUrl}`;
+                                        }
+
                                         return (
                                             <button 
                                                 key={index} 
@@ -455,8 +448,8 @@ export default function ListingDetailPage() {
                                                     {/* Blueprint Lines */}
                                                     <div className="absolute inset-0 pointer-events-none opacity-[0.05]" 
                                                          style={{ 
-                                                            backgroundImage: `linear-gradient(to right, #475569 1px, transparent 1px), linear-gradient(to bottom, #475569 1px, transparent 1px)`,
-                                                            backgroundSize: '22px 22px'
+                                                             backgroundImage: `linear-gradient(to right, #475569 1px, transparent 1px), linear-gradient(to bottom, #475569 1px, transparent 1px)`,
+                                                             backgroundSize: '22px 22px'
                                                          }}
                                                     ></div>
 
