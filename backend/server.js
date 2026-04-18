@@ -25,7 +25,8 @@ app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/favorites', require('./routes/favorites'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/notifications', require('./routes/notifications'));
-
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/inquiries', require('./routes/inquiries'));
 // Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // 🟢 เพิ่มเส้นทางสำหรับ Notifications

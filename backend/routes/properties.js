@@ -32,7 +32,8 @@ router.get('/seller/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const result = await pool.query('SELECT * FROM Properties WHERE userId = $1 ORDER BY createdAt DESC', [userId]);
-        res.status(200).json(result.rows);
+        const mapped = result.rows.map(p => ({ ...p, userId: p.userid || p.userId }));
+        res.status(200).json(mapped);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -52,6 +53,7 @@ router.get('/', async (req, res) => {
 
         const propertiesWithImages = properties.map(p => ({
             ...p,
+            userId: p.userid || p.userId, // Map userid ให้ camelCase สำหรับฝั่ง Frontend
             images: allImages.filter(img => img.property_id === p.id).map(img => ({ url: img.image_url }))
         }));
 
@@ -66,7 +68,7 @@ router.get('/:id', async (req, res) => {
         const query = `
             SELECT p.*, u.username as owner_name, u.tel as owner_tel, u.line_id as owner_line, u.email as owner_email
             FROM Properties p
-            LEFT JOIN Users u ON p.userId = CAST(u.id AS VARCHAR)
+            LEFT JOIN Users u ON p.userid = CAST(u.id AS VARCHAR)
             WHERE p.id = $1
         `;
         const result = await pool.query(query, [id]);
@@ -75,8 +77,10 @@ router.get('/:id', async (req, res) => {
         const imagesResult = await pool.query('SELECT * FROM PropertyImages WHERE property_id = $1', [id]);
         const unitsResult = await pool.query('SELECT * FROM CondoUnits WHERE property_id = $1 ORDER BY floor_number ASC, room_number ASC', [id]);
         
+        const row = result.rows[0];
         const property = { 
-            ...result.rows[0], 
+            ...row,
+            userId: row.userid,   // Normalize to camelCase for frontend
             images: imagesResult.rows.map(img => ({ url: img.image_url })),
             units: unitsResult.rows
         };

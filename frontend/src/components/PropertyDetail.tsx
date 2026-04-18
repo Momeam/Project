@@ -12,6 +12,7 @@ import { usePropertyStore } from '@/stores/usePropertyStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { authFetch, getAuthHeaders } from '@/lib/authFetch'
 import PropertyLayoutViewer from './PropertyLayoutViewer'
+import Chatbox from './Chatbox'
 
 interface PropertyDetailProps {
     property: Property
@@ -29,29 +30,52 @@ export function PropertyDetail({
     onContact,
 }: PropertyDetailProps) {
     const pricePerSqm = property.size > 0 ? property.price / property.size : 0
+    const { currentUser } = useAuthStore();
     const [inquiryMessage, setInquiryMessage] = useState('')
     const [isSending, setIsSending] = useState(false)
+    const [showChatbox, setShowChatbox] = useState(false)
     const toggleFavorite = usePropertyStore((state) => state.toggleFavorite)
 
     const handleSendInquiry = async () => {
+        if (!currentUser) {
+            alert('กรุณาเข้าสู่ระบบเพื่อส่งข้อความ')
+            return
+        }
+        
         if (!inquiryMessage.trim()) {
             alert('กรุณากรอกข้อความสอบถาม')
             return
         }
 
         setIsSending(true)
-        const result = await sendInquiry(property.id, property.userId, inquiryMessage)
-        setIsSending(false)
+        try {
+            const res = await authFetch('/api/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders()
+                },
+                body: JSON.stringify({
+                    receiver_id: property.userId,
+                    property_id: property.id,
+                    message: inquiryMessage.trim()
+                })
+            })
 
-        if (result.success) {
-            alert(result.message)
-            setInquiryMessage('')
-        } else {
-            alert(result.message)
+            if (res.ok) {
+                alert('ส่งข้อความไปที่กล่องข้อความของผู้ขายเรียบร้อยแล้ว! 🎉 สามารถตรวจสอบได้ในเมนู กล่องข้อความ')
+                setInquiryMessage('')
+            } else {
+                const errorData = await res.json()
+                alert(errorData.error || 'ส่งข้อความไม่สำเร็จ')
+            }
+        } catch (error: any) {
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message)
+        } finally {
+            setIsSending(false)
         }
     }
 
-    const { currentUser } = useAuthStore();
     const [units, setUnits] = useState(property.units || []);
 
     const handleUpdateUnitStatus = async (unitId: number, currentStatus: string) => {
@@ -493,13 +517,23 @@ export function PropertyDetail({
                             )}
 
                             {/* ปุ่มติดต่อ */}
-                            <Button
-                                onClick={onContact}
-                                className="w-full bg-green-600 hover:bg-green-700"
-                            >
-                                📨 ติดต่อเจ้าของที่ดิน
-                            </Button>
-
+                            {!isOwner && currentUser && (
+                                <Button
+                                    onClick={() => setShowChatbox(true)}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    <MessageCircle className="w-5 h-5 mr-2" />
+                                    แชทกับเจ้าของที่ดิน
+                                </Button>
+                            )}
+                            {(!currentUser) && (
+                                <Button
+                                    onClick={onContact}
+                                    className="w-full bg-green-600 hover:bg-green-700"
+                                >
+                                    📨 ติดต่อเจ้าของที่ดิน (เข้าสู่ระบบเพื่อแชท)
+                                </Button>
+                            )}
                             {/* ข้อมูลเพิ่มเติม */}
                             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-1">
                                 <p>📅 สร้างเมื่อ: {new Date(property.createdAt).toLocaleDateString('th-TH')}</p>
@@ -509,6 +543,15 @@ export function PropertyDetail({
                     </Card>
                 </div>
             </div>
+
+            {showChatbox && currentUser && (
+                <Chatbox 
+                    propertyId={property.id} 
+                    receiverId={property.userId} 
+                    receiverName={property.contact?.phoneNumber || 'เจ้าของ'} 
+                    onClose={() => setShowChatbox(false)} 
+                />
+            )}
         </div>
     )
 }

@@ -20,7 +20,12 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
             const res = await fetch('/api/properties');
             if (!res.ok) throw new Error('ดึงข้อมูลไม่สำเร็จ');
             const data = await res.json();
-            set({ properties: data, isLoading: false });
+            // Normalize userid (PostgreSQL lowercase) -> userId (camelCase)
+            const normalized = data.map((p: any) => ({
+                ...p,
+                userId: p.userId || p.userid,
+            }));
+            set({ properties: normalized, isLoading: false });
         } catch (error: any) {
             set({ error: error.message, isLoading: false });
         }

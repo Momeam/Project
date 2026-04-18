@@ -136,12 +136,15 @@ export default function ListingDetailPage() {
     };
 
     useEffect(() => {
-        if (property && property.owner_name) {
-            setSellerInfo({
-                username: property.owner_name, tel: property.owner_tel, line_id: property.owner_line
-            });
-        }
-    }, [property]);
+    if (property) {
+        setSellerInfo({
+            // แก้ให้ดึงจาก field ที่ backend ส่งมา (owner_name, owner_tel, owner_line)
+            username: property.owner_name || 'ไม่ระบุชื่อ', 
+            tel: property.owner_tel || '-', 
+            line_id: property.owner_line || '-'
+        });
+    }
+}, [property]);
 
     const handleUpdateUnitDetail = async (unitId: number, updateData: any) => {
         try {
@@ -214,11 +217,11 @@ export default function ListingDetailPage() {
     }, [safeImages]);
 
     const contactInfo = {
-        name: sellerInfo?.username || 'ไม่ระบุชื่อ',
-        phone: sellerInfo?.tel || '-',
-        line: sellerInfo?.line_id || '-', 
-        image: null
-    };
+    name: sellerInfo?.username || 'ไม่ระบุชื่อ',
+    phone: sellerInfo?.tel || '-',
+    line: sellerInfo?.line_id || '-', 
+    image: null
+};
 
     const renderRoomLayout = (unit: any) => {
         const layout = unit.layout_json;

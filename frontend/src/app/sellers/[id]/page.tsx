@@ -104,7 +104,13 @@ export default function SellerProfilePage() {
                                         <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full group-hover:-translate-y-1">
                                             <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
                                                 <img 
-                                                    src={property.images[0]?.url || 'https://placehold.co/600x400?text=No+Image'} 
+                                                    src={
+                                                        (() => {
+                                                            const url = property.images?.[0]?.url || '';
+                                                            if (url.startsWith('/uploads')) return `http://localhost:5000${url}`;
+                                                            return url || 'https://placehold.co/600x400?text=No+Image';
+                                                        })()
+                                                    }
                                                     alt={property.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 />

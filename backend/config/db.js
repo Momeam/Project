@@ -96,6 +96,18 @@ async function connectPostgres() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 `);
+
+        await pool.query(`
+    CREATE TABLE IF NOT EXISTS Messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INT REFERENCES Users(id) ON DELETE CASCADE,
+        receiver_id INT REFERENCES Users(id) ON DELETE CASCADE,
+        property_id INT REFERENCES Properties(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
         
         console.log('✅ All Tables are ready!');
 

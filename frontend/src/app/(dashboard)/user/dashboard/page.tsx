@@ -149,13 +149,14 @@ export default function UserDashboardPage() {
                         >
                             <List className="w-4 h-4 mr-2" /> รายการของฉัน ({myListings.length})
                         </Button>
-                        <Button 
-                            variant={activeTab === 'INQUIRIES' ? 'default' : 'outline'}
-                            onClick={() => setActiveTab('INQUIRIES')}
-                            className="whitespace-nowrap"
-                        >
-                            <MessageSquare className="w-4 h-4 mr-2" /> ข้อความ ({inquiries?.length || 0})
-                        </Button>
+                        <Link href="/inbox">
+                            <Button 
+                                variant="outline"
+                                className="whitespace-nowrap bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                            >
+                                <MessageSquare className="w-4 h-4 mr-2" /> กล่องข้อความแชท
+                            </Button>
+                        </Link>
                         <Button 
                             variant={activeTab === 'ADD' ? 'default' : 'outline'}
                             onClick={() => { setEditingProperty(null); setActiveTab('ADD'); }}
@@ -236,52 +237,6 @@ export default function UserDashboardPage() {
                                         </Card>
                                     );
                                 })}
-                            </div>
-                        )}
-                    </div>
-                ) : activeTab === 'INQUIRIES' ? (
-                    <div className="space-y-6">
-                        {isLoadingInquiries ? (
-                            <div className="text-center py-12">กำลังโหลดข้อความ...</div>
-                        ) : (!inquiries || inquiries.length === 0) ? (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
-                                <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                                <p className="text-gray-500">ยังไม่มีใครส่งข้อความสอบถามเข้ามา</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-4">
-                                {inquiries.map((inquiry: any) => (
-                                    <Card key={inquiry.id} className="dark:bg-gray-800 border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex justify-between items-start">
-                                                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                                    <User className="w-5 h-5 text-blue-500" />
-                                                    {inquiry.sender_name}
-                                                </CardTitle>
-                                            </div>
-                                            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                                สนใจ: {inquiry.property_title || 'ไม่ระบุชื่อทรัพย์'}
-                                            </p>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl italic text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700/50">
-                                                "{inquiry.message}"
-                                            </div>
-                                            <div className="flex flex-wrap gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
-                                                {inquiry.sender_tel && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                                                        <Phone className="w-4 h-4 text-emerald-500" /> {inquiry.sender_tel}
-                                                    </div>
-                                                )}
-                                                {inquiry.sender_email && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                                                        <Mail className="w-4 h-4 text-orange-500" /> {inquiry.sender_email}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
                             </div>
                         )}
                     </div>

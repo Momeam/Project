@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Building2, LayoutDashboard, Settings, UserPlus, ChevronDown } from 'lucide-react';
+import { LogOut, User, Building2, LayoutDashboard, Settings, UserPlus, ChevronDown, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +92,11 @@ export default function Navbar() {
                     {isMounted && (
                         isLoggedIn ? (
                             <>
+                                <Link href="/inbox">
+                                    <Button variant="ghost" size="icon" className="relative text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-10 w-10">
+                                        <MessageSquare className="h-5 w-5" />
+                                    </Button>
+                                </Link>
                                 <NotificationCenter />
                                 
                                 {role === 'USER' && (
