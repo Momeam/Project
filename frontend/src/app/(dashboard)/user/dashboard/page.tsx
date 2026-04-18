@@ -16,33 +16,35 @@ export default function UserDashboardPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [editingProperty, setEditingProperty] = useState<any>(null);
     
-    // 🟢 แก้ไขตรงนี้! ดึงข้อมูลให้ตรงกับชื่อตัวแปร currentUser ใน Store ของคุณ
-    const user = useAuthStore((state: any) => state.currentUser || state.user);
+    // 🟢 ดึงข้อมูลแบบปลอดภัย 100% (รองรับทั้ง currentUser และ user ของคุณ)
+    const currentUser = useAuthStore((state: any) => state.currentUser);
+    const legacyUser = useAuthStore((state: any) => state.user);
+    const user = currentUser || legacyUser;
+    
     const userId = user?.id;
     const role = user?.role;
     
-    // ดึงสถานะการอัปเกรด
     const justUpgraded = useAuthStore((state: any) => state.justUpgraded); 
 
     const { inquiries, fetchInquiries, isLoading: isLoadingInquiries } = useInquiryStore();
 
     // ดึงข้อมูล Property จาก API
-    const allListings = usePropertyStore((state) => state.properties);
-    const fetchProperties = usePropertyStore((state) => state.fetchProperties);
+    const allListings = usePropertyStore((state: any) => state.properties || []);
+    const fetchProperties = usePropertyStore((state: any) => state.fetchProperties);
 
     useEffect(() => {
         setIsMounted(true);
-        fetchProperties();
+        if (fetchProperties) fetchProperties();
         
-        if (role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') {
+        // เช็คให้ครอบคลุมทุกอาชีพที่อยู่ในฟอร์มของคุณ
+        if ((role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') && fetchInquiries) {
             fetchInquiries();
         }
     }, [role, fetchProperties, fetchInquiries]);
 
-    // กรองเอาเฉพาะประกาศของคนนี้
     const myListings = useMemo(() => {
-        if (!userId) return [];
-        return allListings.filter(p => String(p.userId) === String(userId));
+        if (!userId || !Array.isArray(allListings)) return [];
+        return allListings.filter((p: any) => String(p.userId) === String(userId));
     }, [allListings, userId]);
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');
@@ -57,7 +59,7 @@ export default function UserDashboardPage() {
 
                 if (response.ok) {
                     alert('ลบประกาศออกจากฐานข้อมูลสำเร็จ! ✅');
-                    fetchProperties(); 
+                    if (fetchProperties) fetchProperties(); 
                 } else {
                     const data = await response.json();
                     alert(`ไม่สามารถลบได้: ${data.error}`);
@@ -103,12 +105,12 @@ export default function UserDashboardPage() {
                         <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">เซอร์ไพรส์! 🎉</h2>
                         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-2xl mb-8 shadow-lg transform -rotate-1">
                             <p className="text-white font-black text-2xl drop-shadow-md">
-                                ยินดีด้วยคุณได้เป็นคนขายแล้ว!
+                                ยินดีด้วยคุณได้อัปเกรดสำเร็จ!
                             </p>
                         </div>
                         
                         <p className="text-slate-500 mb-10 text-base leading-relaxed font-medium">
-                            เราได้เปิดระบบการลงประกาศขายให้คุณแล้ว <br/>
+                            เราได้เปิดระบบให้คุณแล้ว <br/>
                             เริ่มสร้างรายได้จากอสังหาริมทรัพย์ของคุณได้ทันที!
                         </p>
 
@@ -116,7 +118,7 @@ export default function UserDashboardPage() {
                             onClick={() => useAuthStore.setState({ justUpgraded: false })} 
                             className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
                         >
-                            เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
+                            เข้าสู่ระบบ <RefreshCcw className="w-5 h-5" />
                         </Button>
                     </CardContent>
                 </Card>
@@ -125,7 +127,7 @@ export default function UserDashboardPage() {
     }
 
     // =======================================================
-    // 1. ส่วนแสดงผลสำหรับ SELLER หรือ ADMIN
+    // 1. ส่วนแสดงผลสำหรับ ผู้ขาย
     // =======================================================
     if (role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') {
         return (
@@ -142,7 +144,7 @@ export default function UserDashboardPage() {
                     <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
                         <Button 
                             variant={activeTab === 'LIST' ? 'default' : 'outline'}
-                            onClick={() => { setActiveTab('LIST'); setEditingProperty(null); fetchProperties(); }}
+                            onClick={() => { setActiveTab('LIST'); setEditingProperty(null); if(fetchProperties) fetchProperties(); }}
                             className="whitespace-nowrap"
                         >
                             <List className="w-4 h-4 mr-2" /> รายการของฉัน ({myListings.length})
@@ -152,7 +154,7 @@ export default function UserDashboardPage() {
                             onClick={() => setActiveTab('INQUIRIES')}
                             className="whitespace-nowrap"
                         >
-                            <MessageSquare className="w-4 h-4 mr-2" /> ข้อความ ({inquiries.length})
+                            <MessageSquare className="w-4 h-4 mr-2" /> ข้อความ ({inquiries?.length || 0})
                         </Button>
                         <Button 
                             variant={activeTab === 'ADD' ? 'default' : 'outline'}
@@ -175,7 +177,7 @@ export default function UserDashboardPage() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {myListings.map((item) => {
+                                {myListings.map((item: any) => {
                                     
                                     // โค้ดแก้บัครูปภาพ! (ดึงจากพอร์ต 5000 อัตโนมัติ)
                                     let imageUrl = 'https://placehold.co/150?text=No+Img';
@@ -241,14 +243,14 @@ export default function UserDashboardPage() {
                     <div className="space-y-6">
                         {isLoadingInquiries ? (
                             <div className="text-center py-12">กำลังโหลดข้อความ...</div>
-                        ) : inquiries.length === 0 ? (
+                        ) : (!inquiries || inquiries.length === 0) ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed">
                                 <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
                                 <p className="text-gray-500">ยังไม่มีใครส่งข้อความสอบถามเข้ามา</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-4">
-                                {inquiries.map((inquiry) => (
+                                {inquiries.map((inquiry: any) => (
                                     <Card key={inquiry.id} className="dark:bg-gray-800 border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
                                         <CardHeader className="pb-2">
                                             <div className="flex justify-between items-start">
@@ -290,7 +292,7 @@ export default function UserDashboardPage() {
                             onClick={() => {
                                 setEditingProperty(null);
                                 setActiveTab('LIST');
-                                fetchProperties(); 
+                                if(fetchProperties) fetchProperties(); 
                             }} 
                             className="mb-4 text-gray-500"
                         >
