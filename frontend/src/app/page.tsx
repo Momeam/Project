@@ -48,7 +48,6 @@ export default function HomePage() {
         return result.sort((a, b) => (favoriteIds.includes(String(b.id)) ? 1 : 0) - (favoriteIds.includes(String(a.id)) ? 1 : 0));
     }, [properties, searchQuery, filterType, minPrice, maxPrice, minBed, favoriteIds]);
 
-
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 selection:bg-emerald-500/30 font-sans transition-colors duration-300">
             {/* 🌟 Premium Hero Section 🌟 */}
@@ -150,81 +149,110 @@ export default function HomePage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {filteredProperties.length > 0 ? (
-                            filteredProperties.map((property) => (
-                                <Link href={`/listings/${property.id}`} key={property.id} className="group block h-full outline-none">
-                                    <div className="h-full overflow-hidden border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-2 transition-all duration-500 rounded-[2rem] group-focus-visible:ring-4 ring-emerald-500/50 flex flex-col relative">
-                                        
-                                        <button 
-                                            onClick={(e) => {
-                                                e.preventDefault(); 
-                                                toggleFavorite(property.id);
-                                            }}
-                                            className="absolute top-4 right-4 z-20 bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 p-2.5 rounded-full shadow-lg hover:bg-white/40 dark:hover:bg-black/40 hover:scale-110 transition-all duration-300"
-                                        >
-                                            <Heart className={`w-5 h-5 transition-colors ${favoriteIds.includes(String(property.id)) ? "fill-rose-500 text-rose-500" : "text-white"}`} />
-                                        </button>
+                            filteredProperties.map((property) => {
+                                // 🟢 1. ตัวกรองรูปภาพ ป้องกัน Database ส่งรูปมาเป็น String ซ้อนกัน
+                                let safeImages: any[] = [];
+                                if (property.images) {
+                                    if (typeof property.images === 'string') {
+                                        try { safeImages = JSON.parse(property.images); } catch(e) { safeImages = []; }
+                                    } else if (Array.isArray(property.images)) {
+                                        safeImages = property.images;
+                                    }
+                                }
 
-                                        <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
-                                            <img src={property.images?.[0]?.url || 'https://images.unsplash.com/photo-1545083036-74fcce58bdfe?q=80&w=2070&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" alt={property.title} />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
+                                // 🟢 2. โค้ดดึงรูปจาก Backend พอร์ต 5000 อัตโนมัติ
+                                let displayImage = 'https://placehold.co/400x300?text=No+Image';
+                                if (safeImages.length > 0) {
+                                    const rawImg = safeImages[0].url || safeImages[0].image_url || safeImages[0];
+                                    if (typeof rawImg === 'string' && rawImg.startsWith('/uploads')) {
+                                        displayImage = `http://localhost:5000${rawImg}`;
+                                    } else if (typeof rawImg === 'string') {
+                                        displayImage = rawImg;
+                                    }
+                                }
+
+                                return (
+                                    <Link href={`/listings/${property.id}`} key={property.id} className="group block h-full outline-none">
+                                        <div className="h-full overflow-hidden border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-2 transition-all duration-500 rounded-[2rem] group-focus-visible:ring-4 ring-emerald-500/50 flex flex-col relative">
                                             
-                                            <div className="absolute top-4 left-4">
-                                                <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider text-white shadow-xl border border-white/20 backdrop-blur-sm ${
-                                                    property.status === 'SOLD' ? 'bg-rose-500/90' :
-                                                    property.status === 'BOOKED' ? 'bg-orange-500/90' :
-                                                    property.type === 'SALE' ? 'bg-emerald-500/90' : 'bg-cyan-500/90'
-                                                }`}>
-                                                    {property.status === 'SOLD' ? '🤝 ซื้อขายแล้ว' : 
-                                                     property.status === 'BOOKED' ? '📅 จองแล้ว' : 
-                                                     property.type === 'SALE' ? 'ขาย' : 'เช่า'}
-                                                </span>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.preventDefault(); 
+                                                    toggleFavorite(property.id);
+                                                }}
+                                                className="absolute top-4 right-4 z-20 bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 p-2.5 rounded-full shadow-lg hover:bg-white/40 dark:hover:bg-black/40 hover:scale-110 transition-all duration-300"
+                                            >
+                                                <Heart className={`w-5 h-5 transition-colors ${favoriteIds.includes(String(property.id)) ? "fill-rose-500 text-rose-500" : "text-white"}`} />
+                                            </button>
+
+                                            <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                                                {/* 🟢 ใช้ตัวแปร displayImage ที่คำนวณไว้แล้ว และเพิ่ม onError */}
+                                                <img 
+                                                    src={displayImage} 
+                                                    onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x300?text=Image+Error'; }}
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out bg-slate-100" 
+                                                    alt={property.title} 
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
+                                                
+                                                <div className="absolute top-4 left-4">
+                                                    <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider text-white shadow-xl border border-white/20 backdrop-blur-sm ${
+                                                        property.status === 'SOLD' ? 'bg-rose-500/90' :
+                                                        property.status === 'BOOKED' ? 'bg-orange-500/90' :
+                                                        property.type === 'SALE' ? 'bg-emerald-500/90' : 'bg-cyan-500/90'
+                                                    }`}>
+                                                        {property.status === 'SOLD' ? '🤝 ซื้อขายแล้ว' : 
+                                                         property.status === 'BOOKED' ? '📅 จองแล้ว' : 
+                                                         property.type === 'SALE' ? 'ขาย' : 'เช่า'}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="absolute bottom-5 left-5 right-5">
+                                                    <p className="text-white font-black text-3xl drop-shadow-md flex items-end gap-1">
+                                                        ฿{property.price?.toLocaleString()} 
+                                                        {property.type === 'RENT' && <span className="text-sm font-medium opacity-80 mb-1">/เดือน</span>}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            
-                                            <div className="absolute bottom-5 left-5 right-5">
-                                                <p className="text-white font-black text-3xl drop-shadow-md flex items-end gap-1">
-                                                    ฿{property.price.toLocaleString()} 
-                                                    {property.type === 'RENT' && <span className="text-sm font-medium opacity-80 mb-1">/เดือน</span>}
-                                                </p>
+
+                                            <div className="p-6 relative flex-1 flex flex-col">
+                                                <div className="absolute -top-6 right-6 w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 flex items-center justify-center transform rotate-3 group-hover:rotate-6 transition-transform">
+                                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{property.category}</span>
+                                                </div>
+
+                                                <div className="mb-4 pr-10">
+                                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">{property.title}</h3>
+                                                </div>
+                                                
+                                                <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm mb-6 mt-auto">
+                                                    <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-emerald-500" />
+                                                    <span className="line-clamp-1">{property.address}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800/50 text-sm text-slate-600 dark:text-slate-300">
+                                                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
+                                                        <Bed className="w-4 h-4 text-emerald-500"/> <b className="text-slate-900 dark:text-white">{property.bedrooms}</b>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
+                                                        <Bath className="w-4 h-4 text-cyan-500"/> <b className="text-slate-900 dark:text-white">{property.bathrooms}</b>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
+                                                        <Ruler className="w-4 h-4 text-purple-500"/> <b className="text-slate-900 dark:text-white">{property.size}</b> ม²
+                                                    </div>
+                                                </div>
+
+                                                {/* Render interiorDetails seamlessly if it exists */}
+                                                {property.interiorDetails && (
+                                                    <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 mr-2"><Sparkles className="w-3 h-3 inline pb-0.5"/> จุดเด่น:</span> 
+                                                        <span className="line-clamp-1 italic">{property.interiorDetails}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-
-                                        <div className="p-6 relative flex-1 flex flex-col">
-                                            <div className="absolute -top-6 right-6 w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 flex items-center justify-center transform rotate-3 group-hover:rotate-6 transition-transform">
-                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{property.category}</span>
-                                            </div>
-
-                                            <div className="mb-4 pr-10">
-                                                <h3 className="text-xl font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">{property.title}</h3>
-                                            </div>
-                                            
-                                            <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm mb-6 mt-auto">
-                                                <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-emerald-500" />
-                                                <span className="line-clamp-1">{property.address}</span>
-                                            </div>
-                                            
-                                            <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800/50 text-sm text-slate-600 dark:text-slate-300">
-                                                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
-                                                    <Bed className="w-4 h-4 text-emerald-500"/> <b className="text-slate-900 dark:text-white">{property.bedrooms}</b>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
-                                                    <Bath className="w-4 h-4 text-cyan-500"/> <b className="text-slate-900 dark:text-white">{property.bathrooms}</b>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50 flex-1 justify-center mx-1">
-                                                    <Ruler className="w-4 h-4 text-purple-500"/> <b className="text-slate-900 dark:text-white">{property.size}</b> ม²
-                                                </div>
-                                            </div>
-
-                                            {/* Render interiorDetails seamlessly if it exists */}
-                                            {property.interiorDetails && (
-                                                <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 mr-2"><Sparkles className="w-3 h-3 inline pb-0.5"/> จุดเด่น:</span> 
-                                                    <span className="line-clamp-1 italic">{property.interiorDetails}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))
+                                    </Link>
+                                );
+                            })
                         ) : (
                             <div className="col-span-full py-32 text-center rounded-3xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200 dark:border-slate-800">
                                 <div className="inline-flex p-6 rounded-full bg-slate-100 dark:bg-slate-800 mb-6 shadow-inner">
