@@ -44,11 +44,15 @@ export function PropertyCard({ property }: { property: any }) {
                 // ลบเครื่องหมายคำพูด " หรือ ' ที่อาจจะติดมาเกินออกให้หมด
                 rawUrl = rawUrl.replace(/^["']|["']$/g, '');
                 
-                if (rawUrl.startsWith('/uploads')) {
-                    displayImage = `http://localhost:5000${rawUrl}`;
-                } else if (rawUrl.startsWith('http')) {
-                    displayImage = rawUrl; // ถ้ารูปมาจากเน็ตอยู่แล้ว ให้ใช้เลย
-                }
+                // แก้เป็น
+if (rawUrl.startsWith('http')) {
+    displayImage = rawUrl;
+} else if (rawUrl.startsWith('/uploads')) {
+    displayImage = `http://localhost:5000${rawUrl}`;
+} else if (rawUrl) {
+    // กรณีเก็บแค่ชื่อไฟล์ เช่น "1776520397617-878827553.jpg"
+    displayImage = `http://localhost:5000/uploads/${rawUrl}`;
+}
             }
         }
     } catch (error) {

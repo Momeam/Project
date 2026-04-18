@@ -18,7 +18,7 @@ import { authFetch, getAuthHeaders } from '@/lib/authFetch';
 
 const MapDisplay = dynamic(
     () => import('@/components/MapDisplay'),
-    { ssr: false, loading: () => <div className="h-[400px] w-full bg-slate-50 rounded-2xl animate-pulse flex items-center justify-center text-gray-400">กำลังโหลดแผนที่...</div> }
+    { ssr: false, loading: () => <div className="h-[400px] w-full bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse flex items-center justify-center text-gray-400">กำลังโหลดแผนที่...</div> }
 );
 
 export default function ListingDetailPage() {
@@ -111,14 +111,11 @@ export default function ListingDetailPage() {
         }
     };
 
-    // 🟢 ฟังก์ชันส่งข้อความที่แก้ไขให้ดึง Token ถูกต้องแล้ว!
     const handleSendInquiry = async () => {
         if (!inquiryMessage.trim()) return alert('กรุณากรอกข้อความ');
         setIsSendingInquiry(true);
         try {
             const { sendInquiry } = await import('@/actions/listings');
-            
-            // ดึง Token จากกล่องที่ถูกต้อง (localStorage.getItem('token'))
             const token = localStorage.getItem('token'); 
 
             if (!token) {
@@ -127,7 +124,6 @@ export default function ListingDetailPage() {
                 return;
             }
 
-            // ส่งข้อมูลพร้อม Token ไปหลังบ้าน
             const result = await sendInquiry(id, property.userId || property.userid, inquiryMessage, token, 'http://localhost:5000');
             
             alert(result.message);
@@ -239,19 +235,19 @@ export default function ListingDetailPage() {
         }
 
         return (
-            <div className="relative w-full h-full bg-white rounded-xl overflow-hidden border border-slate-100 shadow-inner">
+            <div className="relative w-full h-full bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-inner">
                 {layout.components.map((comp: any) => {
                     const type = comp.type;
                     return (
                         <div
                             key={comp.id}
                             className={`absolute flex flex-col items-center justify-center p-1 rounded-lg border-2 text-[8px] font-black uppercase
-                                ${type === 'BED' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : ''}
-                                ${type === 'BATH' ? 'bg-blue-50 border-blue-100 text-blue-600' : ''}
-                                ${type === 'KITCHEN' ? 'bg-orange-50 border-orange-100 text-orange-600' : ''}
-                                ${type === 'LIVING' ? 'bg-purple-50 border-purple-100 text-purple-600' : ''}
-                                ${type === 'TV' ? 'bg-slate-50 border-slate-100 text-slate-500' : ''}
-                                ${type === 'BALCONY' ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : ''}
+                                ${type === 'BED' ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-100 dark:border-emerald-800 text-emerald-600' : ''}
+                                ${type === 'BATH' ? 'bg-blue-50 dark:bg-blue-950 border-blue-100 dark:border-blue-800 text-blue-600' : ''}
+                                ${type === 'KITCHEN' ? 'bg-orange-50 dark:bg-orange-950 border-orange-100 dark:border-orange-800 text-orange-600' : ''}
+                                ${type === 'LIVING' ? 'bg-purple-50 dark:bg-purple-950 border-purple-100 dark:border-purple-800 text-purple-600 dark:text-purple-400' : ''}
+                                ${type === 'TV' ? 'bg-slate-50 dark:bg-slate-700 border-slate-100 dark:border-slate-600 text-slate-500 dark:text-slate-300' : ''}
+                                ${type === 'BALCONY' ? 'bg-cyan-50 dark:bg-cyan-950 border-cyan-100 dark:border-cyan-800 text-cyan-600' : ''}
                             `}
                             style={{
                                 left: `${comp.x * 10}%`,
@@ -277,7 +273,7 @@ export default function ListingDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
                 <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
                 <span className="ml-3 text-slate-500">กำลังโหลดข้อมูล...</span>
             </div>
@@ -286,18 +282,19 @@ export default function ListingDetailPage() {
 
     if (!property) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-                <h1 className="text-2xl font-bold text-slate-800 mb-4">ไม่พบข้อมูลประกาศนี้</h1>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">ไม่พบข้อมูลประกาศนี้</h1>
                 <Button onClick={() => router.push('/')}>กลับสู่หน้าหลัก</Button>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pt-32 pb-8">
+        // 1. พื้นหลังหน้า
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-32 pb-8">
             <div className="container mx-auto px-4 max-w-6xl">
                 <div className="flex justify-between items-center mb-6">
-                    <Button variant="ghost" onClick={() => router.back()} className="text-slate-500 hover:text-slate-900 pl-0 hover:bg-transparent">
+                    <Button variant="ghost" onClick={() => router.back()} className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 pl-0 hover:bg-transparent">
                         <ArrowLeft className="w-4 h-4 mr-2" /> ย้อนกลับ
                     </Button>
                     <div className="flex gap-2">
@@ -318,8 +315,9 @@ export default function ListingDetailPage() {
                     <div className="lg:col-span-2 space-y-8">
                         {/* Gallery */}
                         <div className="space-y-4">
-                            <div className="aspect-video bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 relative">
-                                <img src={activeImage || 'https://placehold.co/800x600?text=No+Image'} alt={property.title} className="w-full h-full object-cover bg-slate-50" />
+                            {/* 2. Gallery card */}
+                            <div className="aspect-video bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative">
+                                <img src={activeImage || 'https://placehold.co/800x600?text=No+Image'} alt={property.title} className="w-full h-full object-cover bg-slate-50 dark:bg-slate-800" />
                                 <span className={`absolute top-4 left-4 px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-lg ${property.type === 'SALE' ? 'bg-emerald-500' : 'bg-sky-500'}`}>
                                     {property.type === 'SALE' ? 'ขาย' : 'เช่า'}
                                 </span>
@@ -337,7 +335,7 @@ export default function ListingDetailPage() {
                                             <button 
                                                 key={index} 
                                                 onClick={() => setActiveImage(imageUrl)} 
-                                                className={`relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === imageUrl ? 'border-slate-900 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                                className={`relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === imageUrl ? 'border-slate-900 dark:border-slate-300 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                             >
                                                 <img src={imageUrl} className="w-full h-full object-cover" alt="thumb" />
                                             </button>
@@ -348,11 +346,12 @@ export default function ListingDetailPage() {
                         </div>
 
                         {/* Details */}
-                        <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+                        {/* 3. Details card */}
+                        <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                 <div>
-                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">{property.title}</h1>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-slate-500 text-sm">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">{property.title}</h1>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 text-slate-500 dark:text-slate-400 text-sm">
                                         <div className="flex items-center gap-2">
                                             <MapPin className="w-4 h-4 text-emerald-500" />
                                             <span>{property.address} {property.province}</span>
@@ -360,53 +359,56 @@ export default function ListingDetailPage() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-3xl font-bold text-slate-900">฿{property.price?.toLocaleString() || 0}</p>
-                                    {property.type === 'RENT' && <p className="text-sm text-slate-500">ต่อเดือน</p>}
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">฿{property.price?.toLocaleString() || 0}</p>
+                                    {property.type === 'RENT' && <p className="text-sm text-slate-500 dark:text-slate-400">ต่อเดือน</p>}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-t border-b border-slate-100">
+                            {/* 4. Stats grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-t border-b border-slate-100 dark:border-slate-800">
                                 {[
                                     { label: 'ห้องนอน', val: property.bedrooms || 0, icon: Bed },
                                     { label: 'ห้องน้ำ', val: property.bathrooms || 0, icon: Bath },
                                     { label: 'พื้นที่', val: `${property.size || 0} ตร.ม.`, icon: Ruler },
                                     { label: 'ประเภท', val: property.category || '-', icon: CheckCircle }
                                 ].map((item, i) => (
-                                    <div key={i} className="text-center p-3 rounded-xl bg-slate-50">
-                                        <item.icon className="w-5 h-5 mx-auto mb-2 text-slate-400" />
-                                        <p className="text-xs text-slate-500 mb-1">{item.label}</p>
-                                        <p className="font-semibold text-slate-900">{item.val}</p>
+                                    <div key={i} className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                                        <item.icon className="w-5 h-5 mx-auto mb-2 text-slate-400 dark:text-slate-500" />
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{item.label}</p>
+                                        <p className="font-semibold text-slate-900 dark:text-slate-100">{item.val}</p>
                                     </div>
                                 ))}
                             </div>
 
                             <div className="mt-6">
-                                <h3 className="text-lg font-semibold text-slate-900 mb-3 tracking-tight">รายละเอียด</h3>
-                                <p className="text-slate-600 leading-relaxed whitespace-pre-line text-lg">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 tracking-tight">รายละเอียด</h3>
+                                <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line text-lg">{property.description || "ไม่มีรายละเอียดเพิ่มเติม"}</p>
                             </div>
                         </div>
 
                         {/* ========== Interactive Floor Plan / Seat Booking ========== */}
                         {property?.is_project && units.length > 0 && (
-                            <div className="bg-white p-8 rounded-2xl border-2 border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.1)] overflow-hidden">
-                                <div className="border-b border-slate-100 pb-4 mb-6">
-                                    <h3 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+                            // 5. Floor plan section
+                            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border-2 border-emerald-500/20 overflow-hidden">
+                                <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+                                    <h3 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
                                         <LayoutGrid className="w-6 h-6 text-emerald-500" />
                                         ผังห้องโครงการ (Interactive Floor Plan)
                                     </h3>
                                     <div className="flex justify-between items-end mt-2">
-                                        <p className="text-sm text-slate-500">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">
                                             เลือกดูสถานะของแต่ละห้องในโครงการ
                                         </p>
                                     </div>
                                 </div>
                                  <div className="p-2">
                                     {/* Legend */}
-                                    <div className="flex flex-wrap gap-4 items-center justify-center mb-8 text-[10px] sm:text-xs font-semibold bg-slate-50 p-4 rounded-2xl">
-                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div> ว่าง (Available)</div>
-                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-400 rounded-sm shadow-[0_0_8px_rgba(250,204,21,0.4)]"></div> จองแล้ว (Booked)</div>
-                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm shadow-[0_0_8px_rgba(244,63,94,0.4)]"></div> ขายแล้ว (Sold)</div>
-                                        <div className="flex items-center gap-2"><div className="w-3 h-3 border-2 border-slate-300 rounded-sm"></div> ประตู/หน้าต่าง</div>
+                                    {/* 6. Legend bar */}
+                                    <div className="flex flex-wrap gap-4 items-center justify-center mb-8 text-[10px] sm:text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-4 rounded-2xl">
+                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> ว่าง (Available)</div>
+                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-400 rounded-sm"></div> จองแล้ว (Booked)</div>
+                                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div> ขายแล้ว (Sold)</div>
+                                        <div className="flex items-center gap-2"><div className="w-3 h-3 border-2 border-slate-300 dark:border-slate-600 rounded-sm"></div> ประตู/หน้าต่าง</div>
                                     </div>
 
                                     <div className="flex flex-col md:flex-row gap-8">
@@ -423,14 +425,16 @@ export default function ListingDetailPage() {
                                                         onClick={() => setActiveFloorTab(floor)}
                                                         className={`w-full group flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all duration-200
                                                             ${isActive 
-                                                                ? 'bg-slate-900 border-slate-900 text-white shadow-lg scale-[1.02]' 
-                                                                : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                                                // 7. Active floor button
+                                                                ? 'bg-slate-900 dark:bg-slate-100 border-slate-900 dark:border-slate-100 text-white dark:text-slate-900 shadow-lg scale-[1.02]' 
+                                                                // 8. Inactive floor button
+                                                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                                                             }
                                                         `}
                                                     >
                                                         <div className="text-left">
                                                             <p className="text-xs font-bold">ชั้น {floor}</p>
-                                                            <p className={`text-[9px] ${isActive ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                            <p className="text-[9px] text-slate-400">
                                                                 {availableCount > 0 ? `ว่าง ${availableCount} ห้อง` : 'เต็มแล้ว'}
                                                             </p>
                                                         </div>
@@ -443,20 +447,16 @@ export default function ListingDetailPage() {
                                         </div>
 
                                         {/* Grid Content */}
-                                        <div className="flex-1 bg-slate-50/50 rounded-[2rem] border border-slate-100 p-6 flex items-center justify-center min-h-[550px] relative overflow-hidden group">
-                                            {/* Blueprint Grid Background */}
+                                        {/* 9. Blueprint area */}
+                                        <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-6 flex items-center justify-center min-h-[550px] relative overflow-hidden group">
                                             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(#000 1px, transparent 1px)`, backgroundSize: '20px 20px' }}></div>
                                             
                                             {activeFloorTab && floorsMap[activeFloorTab] ? (
+                                                // 10. Blueprint inner board
                                                 <div 
-                                                    className="relative bg-white rounded-2xl shadow-xl border border-slate-200 transition-all duration-500"
-                                                    style={{ 
-                                                        width: 440, 
-                                                        height: 440, 
-                                                        display: 'block'
-                                                    }}
+                                                    className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 transition-all duration-500"
+                                                    style={{ width: 440, height: 440, display: 'block' }}
                                                 >
-                                                    {/* Blueprint Lines */}
                                                     <div className="absolute inset-0 pointer-events-none opacity-[0.05]" 
                                                          style={{ 
                                                              backgroundImage: `linear-gradient(to right, #475569 1px, transparent 1px), linear-gradient(to bottom, #475569 1px, transparent 1px)`,
@@ -478,13 +478,13 @@ export default function ListingDetailPage() {
                                                                 title={!isRoom ? unit.room_number : `ห้อง ${unit.room_number} - ${unit.status === 'AVAILABLE' ? 'ว่าง' : unit.status === 'BOOKED' ? 'ติดจอง' : 'ขายแล้ว'}`}
                                                                 className={`absolute transition-all duration-300 flex flex-col items-center justify-center font-bold
                                                                     ${isRoom ? 'hover:z-20 hover:scale-105 active:scale-95 shadow-sm rounded-lg border-2' : 'cursor-default opacity-80'}
-                                                                    ${isHallway ? 'bg-slate-100 border border-slate-200 rounded-none opacity-50' : ''}
-                                                                    ${isLift ? 'bg-blue-50 border border-blue-200 text-blue-600 rounded-lg' : ''}
-                                                                    ${isExit ? 'bg-rose-50 border border-rose-200 text-rose-600 rounded-lg' : ''}
-                                                                    ${!isRoom && !isHallway && !isLift && !isExit ? 'bg-slate-200 border border-slate-300 text-slate-600 rounded-lg' : ''}
-                                                                    ${isRoom && unit.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white' : ''}
-                                                                    ${isRoom && unit.status === 'BOOKED' ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-400 hover:text-white' : ''}
-                                                                    ${isRoom && unit.status === 'SOLD' ? 'bg-rose-50 border-rose-400 text-rose-700 opacity-80 hover:opacity-100 hover:bg-rose-500 hover:text-white' : ''}
+                                                                    ${isHallway ? 'bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-none opacity-50' : ''}
+                                                                    ${isLift ? 'bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 rounded-lg' : ''}
+                                                                    ${isExit ? 'bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 rounded-lg' : ''}
+                                                                    ${!isRoom && !isHallway && !isLift && !isExit ? 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg' : ''}
+                                                                    ${isRoom && unit.status === 'AVAILABLE' ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-400 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white' : ''}
+                                                                    ${isRoom && unit.status === 'BOOKED' ? 'bg-yellow-50 dark:bg-yellow-950 border-yellow-400 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-400 hover:text-white' : ''}
+                                                                    ${isRoom && unit.status === 'SOLD' ? 'bg-rose-50 dark:bg-rose-950 border-rose-400 text-rose-700 dark:text-rose-400 opacity-80 hover:opacity-100 hover:bg-rose-500 hover:text-white' : ''}
                                                                 `}
                                                                 style={{
                                                                     left: `${((unit.grid_x || 0) / 20) * 100}%`,
@@ -501,10 +501,8 @@ export default function ListingDetailPage() {
                                                                         {isExit && <X className="w-2 h-2 mt-0.5" />}
                                                                     </>
                                                                 )}
-
-                                                                {/* Orientation Icons */}
                                                                 {unit.door_side && (
-                                                                    <div className={`absolute w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_5px_rgba(59,130,246,0.5)] ${
+                                                                    <div className={`absolute w-1.5 h-1.5 bg-blue-500 rounded-full ${
                                                                         unit.door_side === 'TOP' ? 'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2' :
                                                                         unit.door_side === 'BOTTOM' ? 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2' :
                                                                         unit.door_side === 'LEFT' ? 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2' :
@@ -516,7 +514,7 @@ export default function ListingDetailPage() {
                                                     })}
                                                 </div>
                                             ) : (
-                                                <div className="flex flex-col items-center gap-4 text-slate-300">
+                                                <div className="flex flex-col items-center gap-4 text-slate-300 dark:text-slate-600">
                                                     <LayoutGrid className="w-16 h-16 opacity-20" />
                                                     <p className="text-sm font-bold opacity-40">ไม่มีข้อมูลผังห้องในชั้นนี้</p>
                                                 </div>
@@ -532,16 +530,18 @@ export default function ListingDetailPage() {
 
                         {/* Map & Calc */}
                         <div className="space-y-8">
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                            {/* 11. Map card */}
+                            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                                 <MapDisplay lat={property.latitude} lng={property.longitude} />
                             </div>
                             
                             {property.type === 'SALE' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                                    {/* 12. Calculator cards */}
+                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                                         <MortgageCalculator price={property.price || 0} />
                                     </div>
-                                    <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm">
+                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-900 shadow-sm">
                                         <RentalYieldCalculator price={property.price || 0} />
                                     </div>
                                 </div>
@@ -551,20 +551,23 @@ export default function ListingDetailPage() {
 
                     {/* --- ฝั่งขวา (Contact) --- */}
                     <div className="lg:col-span-1">
-                        <Card className="sticky top-24 border-0 shadow-xl shadow-slate-200/50 bg-white rounded-2xl overflow-hidden">
-                            <div className="bg-slate-900 h-24 w-full"></div>
+                        {/* 13. Contact card */}
+                        <Card className="sticky top-24 border-0 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                            {/* 14. Contact card header */}
+                            <div className="bg-slate-800 dark:bg-slate-700 h-24 w-full"></div>
                             <CardContent className="p-6 relative">
                                 <div className="absolute -top-12 left-1/2 -translate-x-1/2">
-                                    <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-white">
-                                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300"><User className="w-10 h-10" /></div>
+                                    {/* 15. Avatar ring */}
+                                    <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-900 shadow-md overflow-hidden bg-white dark:bg-slate-800">
+                                        <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500"><User className="w-10 h-10" /></div>
                                     </div>
                                 </div>
 
                                 <div className="mt-14 text-center mb-6">
-                                    <h3 className="text-xl font-bold text-slate-900 flex items-center justify-center gap-1">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center justify-center gap-1">
                                         {contactInfo.name}
                                     </h3>
-                                    <p className="text-sm text-slate-500">ID ประกาศ: {property.id || '-'}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">ID ประกาศ: {property.id || '-'}</p>
                                 </div>
 
                                 <div className="space-y-3">
@@ -586,22 +589,25 @@ export default function ListingDetailPage() {
                                 </div>
 
                                 {/* Inquiry Form */}
-                                <div className="mt-8 pt-8 border-t border-slate-100">
-                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                {/* 16. Inquiry section */}
+                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-slate-100">
                                         <MessageSquare className="w-5 h-5 text-emerald-500" />
                                         ส่งข้อความสอบถาม
                                     </h3>
                                     <div className="space-y-4">
+                                        {/* 17. Textarea */}
                                         <textarea 
                                             placeholder="สนใจทรัพย์นี้ครับ นัดดูได้วันไหนบ้าง?" 
                                             value={inquiryMessage}
                                             onChange={(e) => setInquiryMessage(e.target.value)}
-                                            className="w-full min-h-[120px] p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none transition-all resize-none text-sm"
+                                            className="w-full min-h-[120px] p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none transition-all resize-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         />
+                                        {/* 18. Send button */}
                                         <Button 
                                             onClick={handleSendInquiry}
                                             disabled={isSendingInquiry}
-                                            className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold transition-all hover:bg-black disabled:opacity-50"
+                                            className="w-full h-12 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold transition-all hover:bg-black dark:hover:bg-white disabled:opacity-50"
                                         >
                                             {isSendingInquiry ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ส่งข้อความ'}
                                         </Button>
@@ -615,9 +621,10 @@ export default function ListingDetailPage() {
                 {/* Modal for Room Booking & Editing */}
                 {selectedUnit && (
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        {/* 19. Modal */}
+                        <div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
                             {/* Header */}
-                            <div className="relative h-36 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+                            <div className="relative h-36 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
                                 <button onClick={() => setSelectedUnit(null)} className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 p-2 rounded-full hover:bg-black/40 transition-all z-10">
                                     <X className="w-5 h-5" />
                                 </button>
@@ -626,53 +633,54 @@ export default function ListingDetailPage() {
                                     <h2 className="text-white text-4xl font-black tracking-tight">ห้อง {selectedUnit.room_number}</h2>
                                     <p className="text-white/60 text-xs mt-1">ชั้น {selectedUnit.floor_number}</p>
                                 </div>
-                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
                             </div>
 
                             {/* Content */}
                             <div className="p-8">
-                                <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
+                                <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
                                     <div>
-                                        <p className="text-sm text-slate-500 mb-1 font-medium">สถานะห้อง</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1 font-medium">สถานะห้อง</p>
                                         <div className="flex items-center gap-2">
                                             <div className={`w-3 h-3 rounded-full 
-                                                ${selectedUnit.status === 'AVAILABLE' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : ''}
-                                                ${selectedUnit.status === 'BOOKED' ? 'bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.5)]' : ''}
-                                                ${selectedUnit.status === 'SOLD' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]' : ''}
+                                                ${selectedUnit.status === 'AVAILABLE' ? 'bg-emerald-500' : ''}
+                                                ${selectedUnit.status === 'BOOKED' ? 'bg-yellow-400' : ''}
+                                                ${selectedUnit.status === 'SOLD' ? 'bg-rose-500' : ''}
                                             `}></div>
                                             <span className={`font-bold text-lg
-                                                ${selectedUnit.status === 'AVAILABLE' ? 'text-emerald-700' : ''}
-                                                ${selectedUnit.status === 'BOOKED' ? 'text-yellow-700' : ''}
-                                                ${selectedUnit.status === 'SOLD' ? 'text-rose-700' : ''}
+                                                ${selectedUnit.status === 'AVAILABLE' ? 'text-emerald-600 dark:text-emerald-400' : ''}
+                                                ${selectedUnit.status === 'BOOKED' ? 'text-yellow-600 dark:text-yellow-400' : ''}
+                                                ${selectedUnit.status === 'SOLD' ? 'text-rose-600 dark:text-rose-400' : ''}
                                             `}>
                                                 {selectedUnit.status === 'AVAILABLE' ? 'ว่าง (Available)' : selectedUnit.status === 'BOOKED' ? 'จองแล้ว (Booked)' : 'ขายแล้ว (Sold)'}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm text-slate-500 mb-1 font-medium">ราคาห้องนี้</p>
-                                        <p className="font-black text-2xl text-slate-900 tracking-tight">฿{selectedUnit.price?.toLocaleString() || property?.price?.toLocaleString() || 0}</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1 font-medium">ราคาห้องนี้</p>
+                                        <p className="font-black text-2xl text-slate-900 dark:text-slate-100 tracking-tight">฿{selectedUnit.price?.toLocaleString() || property?.price?.toLocaleString() || 0}</p>
                                     </div>
                                 </div>
 
+                                {/* 20. Modal info cards */}
                                 <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
                                         <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">พื้นที่ห้อง</p>
-                                        <p className="font-bold text-slate-700">{selectedUnit.size || property?.size || '0'} ตร.ม.</p>
+                                        <p className="font-bold text-slate-700 dark:text-slate-200">{selectedUnit.size || property?.size || '0'} ตร.ม.</p>
                                     </div>
-                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
                                         <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">สิ่งอำนวยความสะดวก</p>
                                         <div className="flex flex-wrap gap-1">
                                             {selectedUnit.features ? selectedUnit.features.split(',').map((f: string, i: number) => (
-                                                <span key={i} className="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-600 font-medium">{f.trim()}</span>
+                                                <span key={i} className="text-[10px] bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded-md text-slate-600 dark:text-slate-300 font-medium">{f.trim()}</span>
                                             )) : <span className="text-[10px] text-slate-400 italic">ไม่มีระบุ</span>}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Internal Layout - only for ROOM type */}
+                                {/* Internal Layout */}
                                 {selectedUnit.unit_type === 'ROOM' && (
-                                    <div className="bg-slate-50 rounded-2xl p-5 mb-8 border border-slate-100 shadow-inner group">
+                                    // 21. Room layout preview
+                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 mb-8 border border-slate-100 dark:border-slate-700 shadow-inner group">
                                         <p className="text-[10px] uppercase font-bold text-slate-400 mb-4 text-center tracking-widest">ผังภายในห้อง</p>
                                         <div className="w-full h-48 relative overflow-hidden transition-all duration-500 group-hover:scale-[1.02]">
                                             {renderRoomLayout(selectedUnit)}
@@ -685,7 +693,7 @@ export default function ListingDetailPage() {
                                     </div>
                                 )}
                                 
-                                {/* Controls - Booking only for ROOM type */}
+                                {/* Controls */}
                                 <div>
                                     {selectedUnit.unit_type === 'ROOM' ? (
                                         <>
@@ -693,7 +701,7 @@ export default function ListingDetailPage() {
                                                 disabled={selectedUnit.status !== 'AVAILABLE'} 
                                                 onClick={() => handleBookUnit(selectedUnit.id)}
                                                 className={`w-full h-14 text-lg font-bold rounded-xl transition-all 
-                                                    ${selectedUnit.status === 'AVAILABLE' ? 'bg-slate-900 hover:bg-black text-white shadow-xl shadow-slate-900/20 hover:-translate-y-1' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                                                    ${selectedUnit.status === 'AVAILABLE' ? 'bg-slate-900 dark:bg-slate-100 hover:bg-black dark:hover:bg-white text-white dark:text-slate-900 shadow-xl hover:-translate-y-1' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-200 dark:border-slate-700'}
                                                 `}
                                             >
                                                 {selectedUnit.status === 'AVAILABLE' ? (
@@ -705,14 +713,15 @@ export default function ListingDetailPage() {
                                             {selectedUnit.status === 'AVAILABLE' && <p className="text-xs text-center text-slate-400 mt-4">* Demo: ห้องจะถูกเปลี่ยนสถานะเป็นจองแล้วทันทีเมื่อกดปุ่ม</p>}
                                         </>
                                     ) : (
-                                        <div className="text-center py-4 bg-slate-50 rounded-xl border border-slate-100">
-                                            <p className="text-sm text-slate-500 font-medium">
+                                        // 22. Common area notice
+                                        <div className="text-center py-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                                                 {selectedUnit.unit_type === 'LIFT' ? '🛗 ลิฟต์โดยสาร' : 
                                                  selectedUnit.unit_type === 'EXIT' ? '🚪 ทางออกฉุกเฉิน' : 
                                                  selectedUnit.unit_type === 'HALLWAY' ? '🚶 ทางเดิน' :
                                                  `📍 ${selectedUnit.room_number}`}
                                             </p>
-                                            <p className="text-xs text-slate-400 mt-1">พื้นที่ส่วนกลาง - ไม่สามารถจองได้</p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">พื้นที่ส่วนกลาง - ไม่สามารถจองได้</p>
                                         </div>
                                     )}
                                 </div>
