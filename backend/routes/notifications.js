@@ -3,11 +3,14 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { verifyToken } = require('../config/middleware/auth');
 
-// ดึงแจ้งเตือนของ User คนที่ login
+// GET /notifications — ดึงของ user ที่ login อยู่
 router.get('/', verifyToken, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM Notifications WHERE recipient_id = $1 ORDER BY created_at DESC',
+            `SELECT * FROM Notifications 
+             WHERE recipient_id = $1 
+             ORDER BY created_at DESC 
+             LIMIT 50`,
             [req.user.id]
         );
         res.json(result.rows);
@@ -16,12 +19,26 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 
-// อัปเดตว่าอ่านแล้ว
+// PUT /notifications/:id/read — mark อ่านแล้ว
 router.put('/:id/read', verifyToken, async (req, res) => {
     try {
         await pool.query(
-            'UPDATE Notifications SET is_read = TRUE WHERE id = $1 AND recipient_id = $2',
+            `UPDATE Notifications SET is_read = TRUE 
+             WHERE id = $1 AND recipient_id = $2`,
             [req.params.id, req.user.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /notifications/read-all — mark ทั้งหมด
+router.put('/read-all', verifyToken, async (req, res) => {
+    try {
+        await pool.query(
+            `UPDATE Notifications SET is_read = TRUE WHERE recipient_id = $1`,
+            [req.user.id]
         );
         res.json({ success: true });
     } catch (err) {

@@ -23,13 +23,12 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/properties', require('./routes/properties'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/favorites', require('./routes/favorites'));
-app.use('/api/inquiries', require('./routes/inquiries'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // 🟢 เพิ่มเส้นทางสำหรับ Notifications
-app.use('/api/notifications', require('./routes/notifications'));
 // ==========================================================
 // 🟢 ส่วนระบบ OTP (ต้องวางไว้ตรงนี้ ก่อนตัวดัก 404)
 // ==========================================================

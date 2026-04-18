@@ -78,12 +78,16 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
-            fetchUsers: async () => {
-                try {
-                    let token = get().token;
-                    if (!token) token = localStorage.getItem('token');
-                    
-                    const response = await fetch('/api/users', {
+            // แก้เป็น — เช็ค role ก่อน ถ้าไม่ใช่ ADMIN ไม่ต้อง fetch เลย
+fetchUsers: async () => {
+    const currentUser = get().currentUser;
+    if (!currentUser || currentUser.role !== 'ADMIN') return; // ✅ หยุดทันที
+
+    try {
+        let token = get().token;
+        if (!token) token = localStorage.getItem('token');
+        
+        const response = await fetch('/api/users', {
                         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                     });
 

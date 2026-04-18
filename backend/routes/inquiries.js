@@ -20,11 +20,25 @@ router.post('/', async (req, res) => {
             [sender_id, receiver_id, property_id, message]
         );
 
-        // 🟢 2. เพิ่มคำสั่งส่งแจ้งเตือนไปที่ตาราง Notifications (เพื่อให้กระดิ่งเด้ง)
-        await pool.query(
-            'INSERT INTO Notifications (recipient_id, message, type) VALUES ($1, $2, $3)',
-            [receiver_id, 'คุณมีข้อความสอบถามใหม่เกี่ยวกับอสังหาริมทรัพย์ของคุณ!', 'INQUIRY']
+        router.post('/', async (req, res) => {
+    try {
+        const { receiver_id, property_id, message } = req.body;
+        const sender_id = req.user ? req.user.id : null;
+
+        if (!receiver_id || !property_id || !message) {
+            return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน' });
+        }
+
+        const result = await pool.query(
+            'INSERT INTO Inquiries (sender_id, receiver_id, property_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
+            [sender_id, receiver_id, property_id, message]
         );
+
+        res.status(201).json(result.rows[0]);
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
 
         res.status(201).json(result.rows[0]);
     } catch (err) { 

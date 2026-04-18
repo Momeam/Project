@@ -1,139 +1,166 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Bell, X, Info, Sparkles, AlertTriangle, MessageSquare, Clock } from 'lucide-react';
+import { Bell, X, Heart, Trash2, Flag } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-interface Announcement {
+interface Notification {
   id: number;
-  title: string;
-  content: string;
-  type: string;
-  is_active: boolean;
-  admin_name: string;
-  createdat: string;
+  type: 'FAVORITED' | 'PROPERTY_DELETED' | 'REPORT';
+  message: string;
+  is_read: boolean;
+  property_id: number;
+  created_at: string;
 }
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [hasNew, setHasNew] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch('/api/notifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications(data);
+    } catch (err) {
+      console.error('fetch notifications error:', err);
+    }
+  };
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-      try {
-        const res = await axios.get(`/api/announcements`);
-        setAnnouncements(res.data);
-        if (res.data.length > 0) setHasNew(true);
-      } catch (error) {
-        console.error('Error fetching announcements:', error);
-      }
-    };
-    fetchAnnouncements();
-    
-    // Polling ทุกๆ 1 นาที
-    const interval = setInterval(fetchAnnouncements, 60000);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
 
+  const markAsRead = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+      );
+    } catch (err) {
+      console.error('mark read error:', err);
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/notifications/read-all', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error('mark all read error:', err);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
-      case 'URGENT': return <AlertTriangle className="w-5 h-5 text-red-600" />;
-      case 'PROMOTION': return <Sparkles className="w-5 h-5 text-amber-600" />;
-      default: return <Info className="w-5 h-5 text-blue-600" />;
+      case 'FAVORITED': return <Heart className="w-4 h-4 text-pink-500" />;
+      case 'PROPERTY_DELETED': return <Trash2 className="w-4 h-4 text-red-500" />;
+      case 'REPORT': return <Flag className="w-4 h-4 text-amber-500" />;
+      default: return <Bell className="w-4 h-4 text-slate-500" />;
     }
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('th-TH', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateStr).toLocaleDateString('th-TH', {
+      day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
   return (
     <div className="relative">
-      {/* 🔔 ปุ่มกระดิ่งแจ้งเตือน */}
-      <Button 
-        variant="outline" 
-        size="icon" 
-        className="relative rounded-full hover:bg-slate-100 transition-colors border-slate-200"
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setHasNew(false);
-        }}
+      <Button
+        variant="outline"
+        size="icon"
+        className="relative rounded-full hover:bg-slate-100 border-slate-200"
+        onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className={`w-5 h-5 ${hasNew ? 'text-blue-600' : 'text-slate-600'}`} />
-        {hasNew && (
-          <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+        <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-blue-600' : 'text-slate-600'}`} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </Button>
 
-      {/* 📦 กล่องข้อความแจ้งเตือน (Popover) */}
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)}></div>
-          <Card className="absolute right-0 mt-3 w-80 md:w-96 max-h-[500px] overflow-hidden shadow-2xl z-[70] border-slate-200 animate-in fade-in zoom-in slide-in-from-top-2 duration-200">
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+          <Card className="absolute right-0 mt-3 w-80 md:w-96 max-h-[500px] overflow-hidden z-[70] border-slate-200">
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold">
-                <MessageSquare className="w-5 h-5" />
-                กล่องข้อความประกาศ
+                <Bell className="w-4 h-4" />
+                การแจ้งเตือน
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                    {unreadCount} ใหม่
+                  </span>
+                )}
               </div>
-              <button onClick={() => setIsOpen(false)} className="hover:bg-slate-800 p-1 rounded-full transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-[11px] text-slate-300 hover:text-white underline"
+                  >
+                    อ่านทั้งหมด
+                  </button>
+                )}
+                <button onClick={() => setIsOpen(false)} className="hover:bg-slate-800 p-1 rounded-full">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <CardContent className="p-0 overflow-y-auto max-h-[400px]">
-              {announcements.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 italic flex flex-col items-center gap-2">
+            <CardContent className="p-0 overflow-y-auto max-h-[420px]">
+              {notifications.length === 0 ? (
+                <div className="p-10 text-center text-slate-400 flex flex-col items-center gap-2">
                   <Bell className="w-10 h-10 opacity-20" />
-                  ไม่มีประกาศใหม่ในขณะนี้
+                  <p className="text-sm">ยังไม่มีการแจ้งเตือน</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {announcements.map((item) => (
-                    <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors cursor-default group">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-white shadow-sm transition-colors">
-                          {getIcon(item.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                              item.type === 'URGENT' ? 'text-red-600' : 
-                              item.type === 'PROMOTION' ? 'text-amber-600' : 'text-blue-600'
-                            }`}>
-                              {item.type === 'PROMOTION' ? '✨ สิทธิพิเศษ' : 
-                               item.type === 'URGENT' ? '🚨 ประกาศด่วน' : 'ℹ️ ข่าวสาร'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
-                              <Clock className="w-3 h-3" />
-                              {formatDate(item.createdat)}
-                            </span>
-                          </div>
-                          <h3 className="text-sm font-bold text-slate-800 mb-1 leading-tight group-hover:text-blue-600 transition-colors">{item.title}</h3>
-                          <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{item.content}</p>
-                          <div className="mt-2 text-[10px] text-slate-400 font-medium">
-                            ส่งโดย: {item.admin_name || 'System Admin'}
-                          </div>
-                        </div>
+                  {notifications.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => !item.is_read && markAsRead(item.id)}
+                      className={`p-4 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${
+                        !item.is_read ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <div className="p-2 bg-white border border-slate-100 rounded-xl mt-0.5">
+                        {getIcon(item.type)}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800 leading-snug">{item.message}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{formatDate(item.created_at)}</p>
+                      </div>
+                      {!item.is_read && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0" />
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
-            
-            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
-              <p className="text-[10px] text-slate-400 font-medium">ประกาศล่าสุดจากแอดมิน HomeLink</p>
-            </div>
           </Card>
         </>
       )}

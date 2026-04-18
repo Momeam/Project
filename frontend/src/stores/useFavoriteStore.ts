@@ -41,6 +41,7 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
         const { favoriteIds } = get();
         const pid = String(propertyId);
         const isCurrentlyFavorite = favoriteIds.includes(pid);
+        const previousFavoriteIds = favoriteIds; // Save the original state for rollback
 
         // Optimistic update
         if (isCurrentlyFavorite) {
@@ -65,13 +66,17 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
 
             if (!response.ok) {
                 // Revert on failure
-                set({ favoriteIds });
-                const data = await response.json();
-                console.error('Toggle favorite failed:', data.error);
+                set({ favoriteIds: previousFavoriteIds });
+                try {
+                    const data = await response.json();
+                    console.error('Toggle favorite failed:', data.error || 'Unknown error');
+                } catch (parseError) {
+                    console.error('Toggle favorite failed with status:', response.status);
+                }
             }
         } catch (error) {
             // Revert on failure
-            set({ favoriteIds });
+            set({ favoriteIds: previousFavoriteIds });
             console.error("Failed to toggle favorite:", error);
         }
     },
