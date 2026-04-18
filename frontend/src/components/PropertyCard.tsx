@@ -24,6 +24,17 @@ export function PropertyCard({ property }: { property: any }) {
         toggleFavorite(String(property.id));
     };
 
+    // 🟢 โค้ดแก้บัครูปภาพ! (ดึงรูปจาก Backend พอร์ต 5000 อัตโนมัติ)
+    let displayImage = '';
+    if (hasImages) {
+        const rawImg = property.images[0].url || property.images[0];
+        if (typeof rawImg === 'string' && rawImg.startsWith('/uploads')) {
+            displayImage = `http://localhost:5000${rawImg}`;
+        } else {
+            displayImage = rawImg;
+        }
+    }
+
     return (
         <Link href={`/property/${property.id}`}>
             <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 dark:bg-gray-800 cursor-pointer h-full group border-slate-200/80 dark:border-white/5">
@@ -31,7 +42,7 @@ export function PropertyCard({ property }: { property: any }) {
                 <div className="relative w-full h-48 bg-gray-200 dark:bg-gray-700 overflow-hidden">
                     {hasImages ? (
                         <img
-                            src={property.images[0].url || property.images[0]} 
+                            src={displayImage} 
                             alt={property.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />

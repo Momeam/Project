@@ -366,7 +366,7 @@ router.post('/units/bulk', async (req, res) => {
 // ==============================
 
 // [POST] Upload Image using Multer
-router.post('/:id/images', verifyToken, upload.single('image'), async (req, res) => {
+router.post('/:id/images', upload.single('image'), async (req, res) => {
     try {
         const { id } = req.params;
         if (!req.file) return res.status(400).json({ error: 'No image uploaded' });

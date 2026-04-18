@@ -16,18 +16,17 @@ export default function UserDashboardPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [editingProperty, setEditingProperty] = useState<any>(null);
     
-    // ดึงข้อมูล User จาก Store
-    const currentUser = useAuthStore((state) => state.currentUser);
-    const userId = currentUser?.id;
-    const role = currentUser?.role;
-
+    // 🟢 แก้ไขตรงนี้! ดึงข้อมูลให้ตรงกับชื่อตัวแปร currentUser ใน Store ของคุณ
+    const user = useAuthStore((state: any) => state.currentUser || state.user);
+    const userId = user?.id;
+    const role = user?.role;
     
-    const justUpgraded = useAuthStore((state) => state.justUpgraded); 
-    
+    // ดึงสถานะการอัปเกรด
+    const justUpgraded = useAuthStore((state: any) => state.justUpgraded); 
 
     const { inquiries, fetchInquiries, isLoading: isLoadingInquiries } = useInquiryStore();
 
-    // ดึงข้อมูล Property จาก API จริง
+    // ดึงข้อมูล Property จาก API
     const allListings = usePropertyStore((state) => state.properties);
     const fetchProperties = usePropertyStore((state) => state.fetchProperties);
 
@@ -35,15 +34,15 @@ export default function UserDashboardPage() {
         setIsMounted(true);
         fetchProperties();
         
-        if (role === 'SELLER' || role === 'ADMIN') {
+        if (role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') {
             fetchInquiries();
         }
     }, [role, fetchProperties, fetchInquiries]);
 
-    // กรองเอาเฉพาะประกาศที่ userId ตรงกับคนที่ล็อกอินอยู่
+    // กรองเอาเฉพาะประกาศของคนนี้
     const myListings = useMemo(() => {
         if (!userId) return [];
-        return allListings.filter(p => String(p.userId || p.userid) === String(userId));
+        return allListings.filter(p => String(p.userId) === String(userId));
     }, [allListings, userId]);
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');
@@ -52,7 +51,7 @@ export default function UserDashboardPage() {
     const handleDelete = async (id: string) => {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้? 🗑️")) {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || `/api`}/properties/${id}`, {
+                const response = await fetch(`http://localhost:5000/api/properties/${id}`, {
                     method: 'DELETE',
                 });
 
@@ -72,9 +71,9 @@ export default function UserDashboardPage() {
 
     if (!isMounted) return null;
 
-    // -------------------------------------------------------
-    // 0. ส่วนแสดงผล ป๊อปอัปเซอร์ไพรส์ (เมื่อเพิ่งอัปเกรดเสร็จ)
-    // -------------------------------------------------------
+    // =======================================================
+    // 0. ส่วนแสดงผล ป๊อปอัปเซอร์ไพรส์ 
+    // =======================================================
     if (justUpgraded) {
         return (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
@@ -99,7 +98,6 @@ export default function UserDashboardPage() {
                             <div className="bg-emerald-100 w-28 h-28 rounded-full flex items-center justify-center mx-auto relative z-10 shadow-inner">
                                 <PartyPopper className="w-14 h-14 text-emerald-600 animate-bounce" />
                             </div>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-emerald-200/40 rounded-full animate-ping" />
                         </div>
 
                         <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">เซอร์ไพรส์! 🎉</h2>
@@ -115,21 +113,21 @@ export default function UserDashboardPage() {
                         </p>
 
                         <Button 
-    onClick={() => useAuthStore.setState({ justUpgraded: false })} 
-    className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
->
-    เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
-</Button>
+                            onClick={() => useAuthStore.setState({ justUpgraded: false })} 
+                            className="w-full h-16 bg-slate-900 hover:bg-black text-white text-xl font-black rounded-2xl shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center justify-center gap-3"
+                        >
+                            เข้าสู่ระบบผู้ขาย <RefreshCcw className="w-5 h-5" />
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
         );
     }
 
-    // -------------------------------------------------------
+    // =======================================================
     // 1. ส่วนแสดงผลสำหรับ SELLER หรือ ADMIN
-    // -------------------------------------------------------
-    if (role === 'SELLER' || role === 'ADMIN') {
+    // =======================================================
+    if (role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') {
         return (
             <div className="container mx-auto p-4 md:py-8 max-w-5xl">
                 
@@ -178,9 +176,17 @@ export default function UserDashboardPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {myListings.map((item) => {
-                                    const imageUrl = item.images && item.images.length > 0 
-                                        ? (item.images[0].url || item.images[0]) 
-                                        : 'https://placehold.co/150?text=No+Img';
+                                    
+                                    // โค้ดแก้บัครูปภาพ! (ดึงจากพอร์ต 5000 อัตโนมัติ)
+                                    let imageUrl = 'https://placehold.co/150?text=No+Img';
+                                    if (item.images && item.images.length > 0) {
+                                        const rawUrl = item.images[0].url || item.images[0];
+                                        if (typeof rawUrl === 'string' && rawUrl.startsWith('/uploads')) {
+                                            imageUrl = `http://localhost:5000${rawUrl}`;
+                                        } else {
+                                            imageUrl = rawUrl;
+                                        }
+                                    }
 
                                     return (
                                         <Card key={item.id} className="dark:bg-gray-800 overflow-hidden flex flex-row h-32">
@@ -201,7 +207,7 @@ export default function UserDashboardPage() {
                                                     <p className="text-red-600 font-bold text-sm">฿{Number(item.price).toLocaleString()}</p>
                                                 </div>
                                                 <div className="flex justify-end space-x-2">
-                                                    <Link href={`/listings/${item.id}`} target="_blank">
+                                                    <Link href={`/property/${item.id}`} target="_blank">
                                                         <Button size="sm" variant="ghost" className="h-7 px-2"><Eye className="w-3 h-3" /></Button>
                                                     </Link>
                                                     <Button 
@@ -297,14 +303,13 @@ export default function UserDashboardPage() {
         );
     }
 
-    // -------------------------------------------------------
+    // =======================================================
     // 2. ส่วนแสดงผลสำหรับ USER (ยังไม่อนุมัติ / รอตรวจสอบ)
-    // -------------------------------------------------------
+    // =======================================================
     return (
         <div className="container mx-auto p-4 md:py-8 max-w-4xl">
             <AnnouncementBanner />
             
-            {/* 🟢 เรียกใช้ VerificationForm ที่เราเพิ่งเขียนเสร็จ! */}
             <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <VerificationForm />
             </div>

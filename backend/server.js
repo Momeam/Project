@@ -15,8 +15,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static files for uploaded images
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ✅ แบบใหม่ (ชี้เป้าไปที่ config/uploads ให้ตรงกัน)
+app.use('/uploads', express.static(path.join(__dirname, 'config', 'uploads')));
 
 // Routes
 app.use('/api/users', require('./routes/users'));
