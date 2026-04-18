@@ -28,8 +28,8 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 
 // Docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-
+// 🟢 เพิ่มเส้นทางสำหรับ Notifications
+app.use('/api/notifications', require('./routes/notifications'));
 // ==========================================================
 // 🟢 ส่วนระบบ OTP (ต้องวางไว้ตรงนี้ ก่อนตัวดัก 404)
 // ==========================================================
@@ -62,18 +62,18 @@ app.post('/api/otp/send-email', async (req, res) => {
                     <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #111827;">${otp}</span>
                 </div>
                 <p style="color: #ef4444; font-size: 12px; text-align: center;">* รหัสนี้จะหมดอายุภายใน 5 นาที</p>
-            </div>
+                </div>
         `
-    };
+        };
 
-    try {
-        await transporter.sendMail(mailOptions);
-        res.json({ success: true, message: 'ส่ง OTP เข้าอีเมลเรียบร้อย!' });
-    } catch (error) {
+        try {
+            await transporter.sendMail(mailOptions);
+            res.json({ success: true, message: 'ส่ง OTP เข้าอีเมลเรียบร้อย!' });
+        } catch (error) {
         console.error('Nodemailer Error:', error);
         res.status(500).json({ error: 'ไม่สามารถส่งอีเมลได้ (โปรดเช็ค App Password)' });
-    }
-});
+        }
+        });
 
 app.put('/api/users/upgrade/:id', async (req, res) => {
     const { id } = req.params;
@@ -85,19 +85,19 @@ app.put('/api/users/upgrade/:id', async (req, res) => {
     if (record.otp !== otp) return res.status(400).json({ error: 'รหัส OTP ไม่ถูกต้อง!' });
     if (Date.now() > record.expires) return res.status(400).json({ error: 'รหัส OTP หมดอายุแล้ว!' });
 
-    try {
-        const { pool } = require('./config/db'); // ดึง pool มาใช้ตรงนี้เพื่อความชัวร์
-        const type = sellerType || 'OWNER';
-        const result = await pool.query(
+        try {
+            const { pool } = require('./config/db'); // ดึง pool มาใช้ตรงนี้เพื่อความชัวร์
+            const type = sellerType || 'OWNER';
+            const result = await pool.query(
             'UPDATE users SET role = $1, tel = $2, username = $3, seller_type = $4 WHERE id = $5 RETURNING id, email, username, role, tel, seller_type',
             ['SELLER', tel, realName, type, id]
-        );
-        delete otpStore[email];
-        res.json({ success: true, user: result.rows[0] });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+            );
+            delete otpStore[email];
+            res.json({ success: true, user: result.rows[0] });
+            } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+        });
 // ==========================================================
 
 

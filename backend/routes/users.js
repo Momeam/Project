@@ -196,6 +196,7 @@ router.post('/request-otp', verifyToken, async (req, res) => {
 });
 
 // [POST] ยืนยัน OTP อัปเกรดเป็น SELLER
+// [POST] ยืนยัน OTP อัปเกรดเป็น SELLER
 router.post('/verify-otp', verifyToken, async (req, res) => {
     try {
         const { tel, otp, fullName, idCardNumber, lineId } = req.body;
@@ -219,13 +220,22 @@ router.post('/verify-otp', verifyToken, async (req, res) => {
         const duplicateIdCard = await pool.query('SELECT id FROM Users WHERE id_card_number = $1 AND id != $2', [idCardNumber, req.user.id]);
         if (duplicateIdCard.rows.length > 0) return res.status(400).json({ error: 'เลขบัตรประชาชนนี้ถูกใช้แล้ว' });
 
+        // 1. อัปเดตข้อมูลผู้ใช้เป็น SELLER
         const result = await pool.query(
             `UPDATE Users SET role = 'SELLER', full_name = $1, id_card_number = $2, tel = $3, line_id = $4 WHERE id = $5 RETURNING *`,
             [fullName, idCardNumber, tel, lineId, req.user.id]
         );
 
+        // 🟢 2. เพิ่มคำสั่งส่งแจ้งเตือนเข้าฐานข้อมูล ตรงนี้ครับ!
+        await pool.query(
+            'INSERT INTO Notifications (recipient_id, message, type) VALUES ($1, $2, $3)',
+            [req.user.id, 'ยินดีด้วย! บัญชีของคุณได้รับการอัปเกรดเป็นผู้ขายแล้ว คุณสามารถเริ่มลงประกาศอสังหาริมทรัพย์ได้ทันที', 'SYSTEM']
+        );
+
         res.status(200).json({ message: 'ยืนยันตัวตนสำเร็จ! 🎉', user: result.rows[0] });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 module.exports = router;

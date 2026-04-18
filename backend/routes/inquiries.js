@@ -1,28 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/db');
-const { verifyToken } = require('../config/middleware/auth');
+const { pool } = require('../config/db'); //
+const { verifyToken } = require('../config/middleware/auth'); //
 
-// [POST] ส่งข้อความสอบถาม
+// [POST] ส่งข้อความสอบถาม + บันทึกแจ้งเตือนเข้าฐานข้อมูล
 router.post('/', async (req, res) => {
     try {
         const { receiver_id, property_id, message } = req.body;
-        // 🟢 ตัดเรื่อง Token ออก: ถ้าไม่มี sender_id ให้ใช้ 'anonymous'
-        const sender_id = req.user ? req.user.id : 'anonymous';
+        // หากมี Token ให้ใช้ id จริง ถ้าไม่มีให้เป็น anonymous
+        const sender_id = req.user ? req.user.id : null;
 
         if (!receiver_id || !property_id || !message) {
             return res.status(400).json({ error: 'ข้อมูลไม่ครบถ้วน' });
         }
 
+        // 1. บันทึกลงตาราง Inquiries ตามปกติ
         const result = await pool.query(
             'INSERT INTO Inquiries (sender_id, receiver_id, property_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
             [sender_id, receiver_id, property_id, message]
         );
+
+        // 🟢 2. เพิ่มคำสั่งส่งแจ้งเตือนไปที่ตาราง Notifications (เพื่อให้กระดิ่งเด้ง)
+        await pool.query(
+            'INSERT INTO Notifications (recipient_id, message, type) VALUES ($1, $2, $3)',
+            [receiver_id, 'คุณมีข้อความสอบถามใหม่เกี่ยวกับอสังหาริมทรัพย์ของคุณ!', 'INQUIRY']
+        );
+
         res.status(201).json(result.rows[0]);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
-// [GET] Seller gets inquiries
+// [GET] ดึงรายการสอบถามสำหรับ Seller
 router.get('/', verifyToken, async (req, res) => {
     try {
         const result = await pool.query(`
@@ -34,7 +44,9 @@ router.get('/', verifyToken, async (req, res) => {
             ORDER BY i.createdAt DESC
         `, [req.user.id]);
         res.status(200).json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 module.exports = router;
