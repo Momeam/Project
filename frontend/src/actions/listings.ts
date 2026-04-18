@@ -96,17 +96,18 @@ export async function createListing(
     }
 }
 
+// 🟢 แก้ไขตรงนี้: ลบ localStorage ออก แล้วส่ง token กับ API Url ผ่าน Parameter แทน!
 export async function sendInquiry(
     propertyId: string, 
     receiverId: string, 
-    message: string
+    message: string,
+    token: string,          // 👈 รับ Token จากหน้าบ้าน
+    apiUrl: string = 'http://127.0.0.1:5000' // 👈 รับ URL สดๆ
 ) {
     try {
-        const token = localStorage.getItem('token');
         if (!token) throw new Error('กรุณาเข้าสู่ระบบเพื่อส่งข้อความ');
 
-        const currentIP = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-        const response = await fetch(`http://${currentIP}:5000/api/inquiries`, {
+        const response = await fetch(`${apiUrl}/api/inquiries`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -120,7 +121,7 @@ export async function sendInquiry(
             throw new Error(errorData.error || 'ส่งข้อความไม่สำเร็จ');
         }
 
-        return { success: true, message: 'ส่งข้อความสอบถามเรียบร้อยแล้ว!' };
+        return { success: true, message: 'ส่งข้อความสอบถามเรียบร้อยแล้ว! 🎉' };
     } catch (error: any) {
         console.error("❌ Inquiry Error:", error);
         return { success: false, message: error.message };

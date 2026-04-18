@@ -111,12 +111,25 @@ export default function ListingDetailPage() {
         }
     };
 
+    // 🟢 ฟังก์ชันส่งข้อความที่แก้ไขให้ดึง Token ถูกต้องแล้ว!
     const handleSendInquiry = async () => {
         if (!inquiryMessage.trim()) return alert('กรุณากรอกข้อความ');
         setIsSendingInquiry(true);
         try {
             const { sendInquiry } = await import('@/actions/listings');
-            const result = await sendInquiry(id, property.userId, inquiryMessage);
+            
+            // ดึง Token จากกล่องที่ถูกต้อง (localStorage.getItem('token'))
+            const token = localStorage.getItem('token'); 
+
+            if (!token) {
+                alert('กรุณาเข้าสู่ระบบก่อนส่งข้อความครับ!');
+                setIsSendingInquiry(false);
+                return;
+            }
+
+            // ส่งข้อมูลพร้อม Token ไปหลังบ้าน
+            const result = await sendInquiry(id, property.userId || property.userid, inquiryMessage, token, 'http://localhost:5000');
+            
             alert(result.message);
             if (result.success) setInquiryMessage('');
         } catch (error) {
@@ -193,7 +206,6 @@ export default function ListingDetailPage() {
         }
     }, [sortedFloors]);
 
-    // 🟢 โค้ดดึงรูประบบพอร์ต 5000 (สำหรับภาพหลัก)
     useEffect(() => {
         if (safeImages.length > 0) {
             const firstImg = safeImages[0].url || safeImages[0].image_url || safeImages[0];
@@ -316,7 +328,6 @@ export default function ListingDetailPage() {
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {safeImages.map((img: any, index: number) => {
                                         const rawUrl = img.url || img.image_url || img;
-                                        // 🟢 โค้ดดึงรูประบบพอร์ต 5000 (สำหรับภาพเล็ก)
                                         let imageUrl = rawUrl;
                                         if (typeof rawUrl === 'string' && rawUrl.startsWith('/uploads')) {
                                             imageUrl = `http://localhost:5000${rawUrl}`;
