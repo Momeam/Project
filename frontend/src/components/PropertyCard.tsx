@@ -7,50 +7,80 @@ import { MapPin, DoorOpen, Ruler, Heart } from 'lucide-react'
 import { useFavoriteStore } from '@/stores/useFavoriteStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 
-// 🟢 ปรับ Type ให้รองรับข้อมูลที่มาจาก Database
 export function PropertyCard({ property }: { property: any }) {
     const pricePerSqm = property.size > 0 ? property.price / property.size : 0
-    const hasImages = property.images && property.images.length > 0;
+    
+    // 🟢 โค้ดดึงรูประดับพระกาฬ! (แกะข้อมูลทุกรูปแบบที่ฐานข้อมูลอาจจะส่งมา)
+    let displayImage = 'https://placehold.co/400x300?text=No+Image';
+    let imageCount = 0;
 
-    const toggleFavorite = useFavoriteStore((s) => s.toggleFavorite);
-    const isFavorite = useFavoriteStore((s) => s.isFavorite);
-    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    try {
+        let parsedImages = property.images;
+        
+        // ถ้าส่งมาเป็น Text ให้แปลงเป็น Object
+        if (typeof parsedImages === 'string') {
+            parsedImages = JSON.parse(parsedImages);
+        }
+        // ดักกรณีฐานข้อมูลเผลอทำ String ซ้อน String (พบบ่อยมาก)
+        if (typeof parsedImages === 'string') {
+            parsedImages = JSON.parse(parsedImages);
+        }
+
+        // ถ้าแปลงแล้วเป็น Array และมีรูปข้างใน
+        if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+            imageCount = parsedImages.length;
+            const firstImg = parsedImages[0];
+            let rawUrl = '';
+
+            // ดึง URL ออกมา ไม่ว่ามันจะอยู่ในรูปแบบไหน
+            if (typeof firstImg === 'string') {
+                rawUrl = firstImg;
+            } else if (firstImg && typeof firstImg === 'object') {
+                rawUrl = firstImg.url || firstImg.image_url || '';
+            }
+
+            // ถ้ามี URL ให้เช็คและเติมพอร์ต 5000
+            if (rawUrl) {
+                // ลบเครื่องหมายคำพูด " หรือ ' ที่อาจจะติดมาเกินออกให้หมด
+                rawUrl = rawUrl.replace(/^["']|["']$/g, '');
+                
+                if (rawUrl.startsWith('/uploads')) {
+                    displayImage = `http://localhost:5000${rawUrl}`;
+                } else if (rawUrl.startsWith('http')) {
+                    displayImage = rawUrl; // ถ้ารูปมาจากเน็ตอยู่แล้ว ให้ใช้เลย
+                }
+            }
+        }
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการดึงรูปภาพของบ้าน ID:", property.id);
+    }
+
+    const toggleFavorite = useFavoriteStore((s: any) => s.toggleFavorite);
+    const isFavorite = useFavoriteStore((s: any) => s.isFavorite);
+    const isAuthenticated = useAuthStore((s: any) => s.isAuthenticated);
     
     const liked = isFavorite(String(property.id));
 
     const handleFavoriteClick = (e: React.MouseEvent) => {
-        e.preventDefault(); // ป้องกันไม่ให้ลิงก์ทำงาน
+        e.preventDefault();
         e.stopPropagation();
         toggleFavorite(String(property.id));
     };
-
-    // 🟢 โค้ดแก้บัครูปภาพ! (ดึงรูปจาก Backend พอร์ต 5000 อัตโนมัติ)
-    let displayImage = '';
-    if (hasImages) {
-        const rawImg = property.images[0].url || property.images[0];
-        if (typeof rawImg === 'string' && rawImg.startsWith('/uploads')) {
-            displayImage = `http://localhost:5000${rawImg}`;
-        } else {
-            displayImage = rawImg;
-        }
-    }
 
     return (
         <Link href={`/property/${property.id}`}>
             <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 dark:bg-gray-800 cursor-pointer h-full group border-slate-200/80 dark:border-white/5">
                 {/* ภาพ */}
                 <div className="relative w-full h-48 bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                    {hasImages ? (
-                        <img
-                            src={displayImage} 
-                            alt={property.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600">
-                            <span className="text-slate-400 dark:text-slate-500 font-medium text-sm">รออัปเดตรูปภาพ</span>
-                        </div>
-                    )}
+                    <img
+                        src={displayImage} 
+                        alt={property.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 bg-slate-100"
+                        onError={(e) => {
+                            // 🟢 ถ้ายังโหลดไม่ขึ้นอีก ให้โชว์รูป Default ทันที
+                            e.currentTarget.src = 'https://placehold.co/400x300?text=Image+Error';
+                        }}
+                    />
 
                     {/* Badge ประเภท */}
                     <div className="absolute top-3 left-3">
@@ -77,9 +107,9 @@ export function PropertyCard({ property }: { property: any }) {
                     )}
 
                     {/* แสดงจำนวนภาพ */}
-                    {hasImages && property.images.length > 1 && (
+                    {imageCount > 1 && (
                         <div className="absolute bottom-2 right-2 bg-black/60 text-white px-2 py-1 rounded-lg text-xs backdrop-blur-sm font-medium">
-                            📷 {property.images.length}
+                            📷 {imageCount}
                         </div>
                     )}
                 </div>
