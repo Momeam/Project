@@ -110,6 +110,39 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // ==============================
+// 🏪 Public Seller Routes
+// ==============================
+
+// [GET] ดึงรายชื่อผู้ขายสาธารณะ (ไม่ต้อง Login — แสดงเฉพาะผู้ที่มี seller_type)
+router.get('/sellers', async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, username, full_name, email, tel, line_id, seller_type, createdAt 
+             FROM Users 
+             WHERE role = 'SELLER' 
+               AND seller_type IN ('DEVELOPER', 'OWNER', 'AGENT')
+             ORDER BY createdAt DESC`
+        );
+        res.status(200).json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// [GET] ดึงข้อมูลผู้ขายรายเดียว (สาธารณะ)
+router.get('/sellers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `SELECT id, username, full_name, email, tel, line_id, seller_type, createdAt 
+             FROM Users 
+             WHERE id = $1 AND role = 'SELLER' AND seller_type IN ('DEVELOPER', 'OWNER', 'AGENT')`,
+            [id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบผู้ขายรายนี้' });
+        res.status(200).json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ==============================
 // 👤 Admin & User Management
 // ==============================
 

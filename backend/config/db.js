@@ -37,7 +37,7 @@ async function connectPostgres() {
                 id_card_number VARCHAR(13),
                 line_id VARCHAR(100),
                 role VARCHAR(20) DEFAULT 'USER',
-                seller_type VARCHAR(50) DEFAULT 'OWNER',
+                seller_type VARCHAR(50) DEFAULT NULL,
                 createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);

@@ -117,7 +117,7 @@ export default function LoginPage() {
                     </Link>
 
                     <div className="mb-10">
-                        <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-3 tracking-tight">ยินดีต้อนรับกลับมา</h2>
+                        <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-3 tracking-tight">ยินดีต้อนรับ</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-lg">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ</p>
                     </div>
 

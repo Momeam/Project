@@ -9,6 +9,7 @@ import { User, Phone, MessageSquare, MapPin, ArrowLeft, CheckCircle, Share2, Hea
 import dynamic from 'next/dynamic';
 import MortgageCalculator from '@/components/MortgageCalculator';
 import RentalYieldCalculator from '@/components/RentalYieldCalculator';
+import PriceComparison from '@/components/PriceComparison';
 import FloorPlanBuilder from '@/components/FloorPlanBuilder';
 import PropertyLayoutViewer from '@/components/PropertyLayoutViewer';
 
@@ -47,7 +48,9 @@ export default function ListingDetailPage() {
     const user = useAuthStore((state) => state.currentUser); 
     
     const storeProperty = typeof getPropertyById === 'function' ? getPropertyById(id) : null;
-    const property = storeProperty || apiProperty;
+    // ⭐️ ต้องใช้ apiProperty ก่อนเสมอ เพราะมีข้อมูล owner จาก JOIN (owner_name, owner_tel, owner_email)
+    // storeProperty จาก GET / ไม่มี owner info
+    const property = apiProperty || storeProperty;
 
     const safeImages = useMemo(() => {
         if (!property?.images) return [];
@@ -65,7 +68,7 @@ export default function ListingDetailPage() {
         if (!id) return;
         const fetchPropertyDetail = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/properties/${id}`);
+                const res = await fetch(`/api/properties/${id}`);
                 if (res.ok) {
                     const data = await res.json();
                     setApiProperty(data);
@@ -89,7 +92,7 @@ export default function ListingDetailPage() {
     const handleDelete = async () => {
         if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้?')) {
             try {
-                const res = await fetch(`http://localhost:5000/api/properties/${property.id}`, { method: 'DELETE' });
+                const res = await fetch(`/api/properties/${property.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     alert('ลบประกาศเรียบร้อย!');
                     router.push('/');
@@ -138,17 +141,18 @@ export default function ListingDetailPage() {
     useEffect(() => {
     if (property) {
         setSellerInfo({
-            // แก้ให้ดึงจาก field ที่ backend ส่งมา (owner_name, owner_tel, owner_line)
             username: property.owner_name || 'ไม่ระบุชื่อ', 
             tel: property.owner_tel || '-', 
-            line_id: property.owner_line || '-'
+            line_id: property.owner_line || '-',
+            email: property.owner_email || '-',
+            owner_type: property.owner_type || null
         });
     }
 }, [property]);
 
     const handleUpdateUnitDetail = async (unitId: number, updateData: any) => {
         try {
-            const res = await authFetch(`http://localhost:5000/api/properties/units/${unitId}`, {
+            const res = await authFetch(`/api/properties/units/${unitId}`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -220,6 +224,8 @@ export default function ListingDetailPage() {
     name: sellerInfo?.username || 'ไม่ระบุชื่อ',
     phone: sellerInfo?.tel || '-',
     line: sellerInfo?.line_id || '-', 
+    email: sellerInfo?.email || '-',
+    owner_type: sellerInfo?.owner_type || null,
     image: null
 };
 
@@ -539,7 +545,7 @@ export default function ListingDetailPage() {
                             </div>
                             
                             {property.type === 'SALE' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-6">
                                     {/* 12. Calculator cards */}
                                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                                         <MortgageCalculator price={property.price || 0} />
@@ -549,6 +555,9 @@ export default function ListingDetailPage() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* 13. Price Comparison */}
+                            <PriceComparison currentProperty={property} />
                         </div>
                     </div>
 
@@ -574,11 +583,41 @@ export default function ListingDetailPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <Button asChild className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg shadow-lg transition-all hover:scale-[1.02]">
-                                        <a href={`tel:${contactInfo.phone}`}>
-                                            <Phone className="w-5 h-5 mr-2" /> โทรหาเจ้าของ
-                                        </a>
-                                    </Button>
+                                    {/* ⭐️ แสดงข้อมูลติดต่อเจ้าของประกาศ */}
+                                    <div className="space-y-3 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">ข้อมูลติดต่อ</p>
+                                        
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                                                <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-slate-400 font-medium">เบอร์โทร</p>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white">{contactInfo.phone}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                                                <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-slate-400 font-medium">Line ID</p>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white">{contactInfo.line}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
+                                                <User className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-slate-400 font-medium">อีเมล</p>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{contactInfo.email}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
 
                                     {canDelete && (
                                         <Button 

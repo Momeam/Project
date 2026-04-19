@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import VerificationForm from '@/components/VerificationForm'; 
 import AddListingForm from '@/components/AddListingForm';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -8,11 +8,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { usePropertyStore } from '@/stores/usePropertyStore'; 
 import { useInquiryStore } from '@/stores/useInquiryStore'; 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Clock, XCircle, Plus, List, Trash2, Eye, ArrowLeft, PartyPopper, RefreshCcw, MessageSquare, User, Mail, Phone, Edit } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UserDashboardPage() {
+    const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
     const [editingProperty, setEditingProperty] = useState<any>(null);
     
@@ -28,24 +30,21 @@ export default function UserDashboardPage() {
 
     const { inquiries, fetchInquiries, isLoading: isLoadingInquiries } = useInquiryStore();
 
-    // ดึงข้อมูล Property จาก API
-    const allListings = usePropertyStore((state: any) => state.properties || []);
+    // 🟢 ดึงข้อมูล Property เฉพาะของฉันจาก API (ไม่โหลดของคนอื่น)
+    const myListings = usePropertyStore((state: any) => state.myProperties || []);
+    const fetchMyProperties = usePropertyStore((state: any) => state.fetchMyProperties);
     const fetchProperties = usePropertyStore((state: any) => state.fetchProperties);
 
     useEffect(() => {
         setIsMounted(true);
-        if (fetchProperties) fetchProperties();
+        // ดึงเฉพาะประกาศของตัวเอง
+        if (fetchMyProperties && userId) fetchMyProperties(userId);
         
         // เช็คให้ครอบคลุมทุกอาชีพที่อยู่ในฟอร์มของคุณ
         if ((role === 'SELLER' || role === 'ADMIN' || role === 'DEVELOPER' || role === 'AGENT') && fetchInquiries) {
             fetchInquiries();
         }
-    }, [role, fetchProperties, fetchInquiries]);
-
-    const myListings = useMemo(() => {
-        if (!userId || !Array.isArray(allListings)) return [];
-        return allListings.filter((p: any) => String(p.userId) === String(userId));
-    }, [allListings, userId]);
+    }, [role, userId, fetchMyProperties, fetchInquiries]);
 
     const [activeTab, setActiveTab] = useState<'LIST' | 'ADD' | 'INQUIRIES'>('LIST');
 
@@ -53,13 +52,14 @@ export default function UserDashboardPage() {
     const handleDelete = async (id: string) => {
         if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประกาศนี้? 🗑️")) {
             try {
-                const response = await fetch(`http://localhost:5000/api/properties/${id}`, {
+                const response = await fetch(`/api/properties/${id}`, {
                     method: 'DELETE',
                 });
 
                 if (response.ok) {
                     alert('ลบประกาศออกจากฐานข้อมูลสำเร็จ! ✅');
-                    if (fetchProperties) fetchProperties(); 
+                    // รีเฟรชเฉพาะประกาศของฉัน
+                    if (fetchMyProperties && userId) fetchMyProperties(userId); 
                 } else {
                     const data = await response.json();
                     alert(`ไม่สามารถลบได้: ${data.error}`);
@@ -135,32 +135,34 @@ export default function UserDashboardPage() {
                 
                 <AnnouncementBanner />
 
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div className="flex items-center gap-4 w-full">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Seller Dashboard
-                        </h1>
-                    </div>
-                    <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
+                <div className="mb-8">
+                    <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 mb-4 font-medium transition-colors">
+                        <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+                    </button>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-5">
+                        Seller Dashboard
+                    </h1>
+                    {/* ⭐️ แท็บเมนู — แสดงเป็น Grid เต็มจอ ดูง่าย */}
+                    <div className="grid grid-cols-3 gap-3">
                         <Button 
                             variant={activeTab === 'LIST' ? 'default' : 'outline'}
-                            onClick={() => { setActiveTab('LIST'); setEditingProperty(null); if(fetchProperties) fetchProperties(); }}
-                            className="whitespace-nowrap"
+                            onClick={() => { setActiveTab('LIST'); setEditingProperty(null); if(fetchMyProperties && userId) fetchMyProperties(userId); }}
+                            className={`h-14 text-sm font-bold rounded-xl transition-all ${activeTab === 'LIST' ? 'bg-slate-900 dark:bg-white dark:text-slate-900 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700'}`}
                         >
                             <List className="w-4 h-4 mr-2" /> รายการของฉัน ({myListings.length})
                         </Button>
-                        <Link href="/inbox">
+                        <Link href="/inbox" className="block">
                             <Button 
                                 variant="outline"
-                                className="whitespace-nowrap bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                                className="w-full h-14 text-sm font-bold rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-blue-200 dark:border-blue-800"
                             >
-                                <MessageSquare className="w-4 h-4 mr-2" /> กล่องข้อความแชท
+                                <MessageSquare className="w-4 h-4 mr-2" /> กล่องข้อความ
                             </Button>
                         </Link>
                         <Button 
                             variant={activeTab === 'ADD' ? 'default' : 'outline'}
                             onClick={() => { setEditingProperty(null); setActiveTab('ADD'); }}
-                            className={`whitespace-nowrap ${activeTab === 'ADD' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                            className={`h-14 text-sm font-bold rounded-xl transition-all ${activeTab === 'ADD' ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700'}`}
                         >
                             <Plus className="w-4 h-4 mr-2" /> ลงประกาศใหม่
                         </Button>
@@ -210,7 +212,7 @@ export default function UserDashboardPage() {
                                                     <p className="text-red-600 font-bold text-sm">฿{Number(item.price).toLocaleString()}</p>
                                                 </div>
                                                 <div className="flex justify-end space-x-2">
-                                                    <Link href={`/property/${item.id}`} target="_blank">
+                                                    <Link href={`/listings/${item.id}`} target="_blank">
                                                         <Button size="sm" variant="ghost" className="h-7 px-2"><Eye className="w-3 h-3" /></Button>
                                                     </Link>
                                                     <Button 
@@ -247,7 +249,7 @@ export default function UserDashboardPage() {
                             onClick={() => {
                                 setEditingProperty(null);
                                 setActiveTab('LIST');
-                                if(fetchProperties) fetchProperties(); 
+                                if(fetchMyProperties && userId) fetchMyProperties(userId); 
                             }} 
                             className="mb-4 text-gray-500"
                         >

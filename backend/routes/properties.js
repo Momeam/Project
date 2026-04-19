@@ -32,7 +32,20 @@ router.get('/seller/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const result = await pool.query('SELECT * FROM Properties WHERE userId = $1 ORDER BY createdAt DESC', [userId]);
-        const mapped = result.rows.map(p => ({ ...p, userId: p.userid || p.userId }));
+        
+        // ดึงรูปภาพทั้งหมดของ properties เหล่านี้
+        const propertyIds = result.rows.map(p => p.id);
+        let allImages = [];
+        if (propertyIds.length > 0) {
+            const imagesResult = await pool.query('SELECT * FROM PropertyImages WHERE property_id = ANY($1::int[])', [propertyIds]);
+            allImages = imagesResult.rows;
+        }
+        
+        const mapped = result.rows.map(p => ({
+            ...p,
+            userId: p.userid || p.userId,
+            images: allImages.filter(img => img.property_id === p.id).map(img => ({ url: img.image_url }))
+        }));
         res.status(200).json(mapped);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -66,7 +79,12 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const query = `
-            SELECT p.*, u.username as owner_name, u.tel as owner_tel, u.line_id as owner_line, u.email as owner_email
+            SELECT p.*, 
+                   COALESCE(u.full_name, u.username) as owner_name, 
+                   u.tel as owner_tel, 
+                   u.line_id as owner_line, 
+                   u.email as owner_email,
+                   u.seller_type as owner_type
             FROM Properties p
             LEFT JOIN Users u ON p.userid = CAST(u.id AS VARCHAR)
             WHERE p.id = $1

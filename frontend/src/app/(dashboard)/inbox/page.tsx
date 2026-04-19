@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Building2, MessageCircle, Send, User, ChevronRight } from 'lucide-react'
+import { Building2, MessageCircle, Send, User, ChevronRight, ArrowLeft } from 'lucide-react'
 import { authFetch, getAuthHeaders } from '@/lib/authFetch'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useRouter } from 'next/navigation'
@@ -152,10 +152,15 @@ export default function InboxPage() {
 
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-6xl mt-24">
-            <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
-                <MessageCircle className="w-8 h-8 text-emerald-500" />
-                กล่องข้อความ
-            </h1>
+            <div className="flex items-center gap-4 mb-6">
+                <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 font-medium transition-colors">
+                    <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+                </button>
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                    <MessageCircle className="w-8 h-8 text-emerald-500" />
+                    กล่องข้อความ
+                </h1>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[70vh]">
                 {/* Sidebar (Conversations List) */}
@@ -216,7 +221,7 @@ export default function InboxPage() {
                                     <h2 className="font-bold flex items-center gap-2 text-lg">
                                         {selectedConv.other_name} <span className="text-sm font-normal text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{selectedConv.other_role}</span>
                                     </h2>
-                                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-1 cursor-pointer hover:underline" onClick={() => router.push(`/property/${selectedConv.property_id}`)}>
+                                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-1 cursor-pointer hover:underline" onClick={() => router.push(`/listings/${selectedConv.property_id}`)}>
                                         <Building2 className="w-4 h-4" />
                                         {selectedConv.property_title}
                                         <ChevronRight className="w-3 h-3" />
